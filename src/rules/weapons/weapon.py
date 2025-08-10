@@ -45,7 +45,8 @@ class FirearmWeapon(Weapon):
         self.mag_size = mag_size
         self.distance_rules = sorted(
             distance_rules,
-            key=lambda r: float('inf') if r.max_distance is None else r.max_distance
+            key=lambda r: r.min_distance,
+            reverse=True
         )
         self.reload_cost = reload_cost
         self.is_heavy = is_heavy
@@ -53,9 +54,7 @@ class FirearmWeapon(Weapon):
 
     def get_distance_rule(self, distance):
         for rule in self.distance_rules:
-            if rule.max_distance is None:
-                return rule
-            if distance <= rule.max_distance:
+            if distance > rule.min_distance:
                 return rule
         raise Exception('Invalid distance. Probably wrong weapon setting')
 
