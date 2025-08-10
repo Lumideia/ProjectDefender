@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from typing import Optional
+from typing import Optional, Tuple
 
 
 @dataclass
@@ -23,7 +23,7 @@ class DistanceModifier:
     distance_step: int = 0
     is_effective: bool = False
 
-    def calculate_penalties(self, distance: int) -> tuple[float, int, int]:
+    def calculate_penalties(self, distance: int) -> Tuple[float, int, int]:
         """
         Calculate the final damage multiplier, accuracy buff, and crit buff
         for a given distance, including step-based adjustments for ranges

@@ -1,4 +1,5 @@
 from abc import ABC
+from typing import List
 
 from src.rules.dice import Dice
 from src.rules.weapons.modifiers import DistanceModifier
@@ -7,8 +8,8 @@ from src.rules.weapons.modifiers import DistanceModifier
 class Weapon(ABC):
     def __init__(
             self,
-            base_dices: list[Dice] = None,
-            cr_dices: list[Dice] = None,
+            base_dices: List[Dice] = None,
+            cr_dices: List[Dice] = None,
             movement_effects: int = 0,
             armor_destroying: int = 0,
             is_move_attack_allowed: bool = False,
@@ -23,20 +24,20 @@ class Weapon(ABC):
 class FirearmWeapon(Weapon):
     base_atk: int = 0
     mag_size: int
-    distance_rules: list[DistanceModifier]
+    distance_rules: List[DistanceModifier]
     reload_cost: int = 1
     is_heavy: bool = False
 
     def __init__(
             self,
-            base_dices: list[Dice] = None,
-            cr_dices: list[Dice] = None,
+            base_dices: List[Dice] = None,
+            cr_dices: List[Dice] = None,
             movement_effects: int = 0,
             armor_destroying: int = 0,
             is_move_attack_allowed: bool = False,
             base_atk: int = 0,
             mag_size: int = 20,
-            distance_rules: list[DistanceModifier] = None,
+            distance_rules: List[DistanceModifier] = None,
             reload_cost: int = 1,
             is_heavy: bool = False
     ):
@@ -64,8 +65,8 @@ class ThrowingWeapon(Weapon):
 
     def __init__(
             self,
-            base_dices: list[Dice] = None,
-            cr_dices: list[Dice] = None,
+            base_dices: List[Dice] = None,
+            cr_dices: List[Dice] = None,
             movement_effects: int = 0,
             armor_destroying: int = 0,
             is_move_attack_allowed: bool = False,
@@ -77,8 +78,8 @@ class ThrowingWeapon(Weapon):
 class MeleeWeapon(Weapon):
     def __init__(
             self,
-            base_dices: list[Dice] = None,
-            cr_dices: list[Dice] = None,
+            base_dices: List[Dice] = None,
+            cr_dices: List[Dice] = None,
             movement_effects: int = 0,
             armor_destroying: int = 0,
     ):
