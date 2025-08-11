@@ -8,28 +8,27 @@ from src.rules.weapons.modifiers import DistanceModifier
 class Weapon(ABC):
     def __init__(
             self,
+            name: str = '',
             base_dices: List[Dice] = None,
             cr_dices: List[Dice] = None,
             movement_effects: int = 0,
             armor_destroying: int = 0,
             is_move_attack_allowed: bool = False,
+            base_atk: int = 0,
     ):
+        self.name = name
         self.base_dices = base_dices
         self.cr_dices = cr_dices
         self.movement_effects = movement_effects
         self.armor_destroying = armor_destroying
         self.is_move_attack_allowed = is_move_attack_allowed
+        self.base_atk = base_atk
 
 
 class FirearmWeapon(Weapon):
-    base_atk: int = 0
-    mag_size: int
-    distance_rules: List[DistanceModifier]
-    reload_cost: int = 1
-    is_heavy: bool = False
-
     def __init__(
             self,
+            name: str = '',
             base_dices: List[Dice] = None,
             cr_dices: List[Dice] = None,
             movement_effects: int = 0,
@@ -41,8 +40,10 @@ class FirearmWeapon(Weapon):
             reload_cost: int = 1,
             is_heavy: bool = False
     ):
-        super().__init__(base_dices, cr_dices, movement_effects, armor_destroying, is_move_attack_allowed)
-        self.base_atk = base_atk
+        super().__init__(
+            name, base_dices, cr_dices, movement_effects, armor_destroying, is_move_attack_allowed, base_atk
+        )
+
         self.mag_size = mag_size
         self.distance_rules = sorted(
             distance_rules,
@@ -61,26 +62,33 @@ class FirearmWeapon(Weapon):
 
 
 class ThrowingWeapon(Weapon):
-    max_distance: int = 30
-
     def __init__(
             self,
+            name: str = '',
             base_dices: List[Dice] = None,
             cr_dices: List[Dice] = None,
             movement_effects: int = 0,
             armor_destroying: int = 0,
             is_move_attack_allowed: bool = False,
+            base_atk: int = 0,
             max_distance: int = 30,
     ):
-        super().__init__(base_dices, cr_dices, movement_effects, armor_destroying, is_move_attack_allowed)
+        super().__init__(
+            name, base_dices, cr_dices, movement_effects, armor_destroying, is_move_attack_allowed, base_atk
+        )
         self.max_distance = max_distance
 
 class MeleeWeapon(Weapon):
     def __init__(
             self,
+            name: str = '',
             base_dices: List[Dice] = None,
             cr_dices: List[Dice] = None,
             movement_effects: int = 0,
             armor_destroying: int = 0,
+            base_atk: int = 0,
     ):
-        super().__init__(base_dices, cr_dices, movement_effects, armor_destroying, is_move_attack_allowed=True)
+        super().__init__(
+            name, base_dices, cr_dices, movement_effects, armor_destroying,
+            is_move_attack_allowed=True, base_atk=base_atk
+        )
