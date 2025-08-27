@@ -1,5 +1,9 @@
 from abc import ABC
+from dataclasses import dataclass, field
 from enum import Enum
+from typing import List
+
+from src.enteties.weapon_instance import WeaponInstance
 
 class CharacterSize(Enum):
     SMALL = 1
@@ -7,6 +11,7 @@ class CharacterSize(Enum):
     HUGE = 3
 
 
+@dataclass
 class Character(ABC):
     hp: int
     armour: int
@@ -19,5 +24,5 @@ class Character(ABC):
     is_organic: bool
     throw_distance: int
     size: CharacterSize
-
-    # TODO: Logic to apply modifiers on self/enemies state (effects)
+    main_weapon: WeaponInstance
+    side_weapon: WeaponInstance = None
