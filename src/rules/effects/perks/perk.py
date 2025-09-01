@@ -1,10 +1,12 @@
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
-from typing import List
+from typing import List, Optional
 
 from src.enteties.weapon_instance import FireArmWeaponInstance
-from src.rules.characters.operative import Operative, Character
+from src.enteties.character_instance import CharacterInstance
+from src.rules.characters.operative import Operative
 from src.rules.effects.effect import Effect
+from src.rules.events.types import EventCtx
 
 
 @dataclass
@@ -16,8 +18,78 @@ class Perk(ABC):
     available_classes: List['Operative'] = field(default_factory=list)
     usage_area: int = 0
     perks_required: List['Perk'] = field(default_factory=list)
+    cd_left: int = field(default=0, init=False, repr=False)
+    
+    def tick(self) -> None:
+        if self.cd_left > 0:
+            self.cd_left -= 1
+    
+    def start_cooldown(self) -> None:
+        self.cd_left = self.cooldown
+        
+    def could_be_activated(
+            self, actor: CharacterInstance, target: Optional[CharacterInstance] = None, *args, **kwargs
+    ) -> bool:
+        return True
+
+    def on_gain(self, actor: CharacterInstance) -> bool:
+        pass
 
 
+
+@dataclass
+class PassiveOneTimePerk(Perk):
+    """Perk which works only once to grant some special improvements"""
+    used: bool = field(default=False, init=False)
+
+    def on_gain(self, actor: CharacterInstance) -> None:
+        if self.used:
+            return
+        self.apply_once(actor)
+        self.used = True
+
+    @abstractmethod
+    def apply_once(self, actor: CharacterInstance) -> None:
+        pass
+
+@dataclass
+class PassiveTriggeredPerk(Perk):
+    """Passive perks with activation conditions"""
+    used_on_current_turn: bool = field(default=None, repr=False)
+
+    def tick(self) -> None:
+        if self.cd_left > 0:
+            self.cd_left -= 1
+        if self.used_on_current_turn is not None:
+            self.used_on_current_turn = False
+
+    def ready(self) -> bool:
+        if self.cd_left > 0:
+            return False
+        if self.used_on_current_turn:
+            return False
+        return True
+
+    def try_trigger(self, actor: CharacterInstance, ctx: Optional[EventCtx] = None) -> bool:
+        if not self.ready():
+            return False
+        if not self.conditions_met(actor, ctx):
+            return False
+        self.apply_effect(actor, ctx)
+
+        self.start_cooldown()
+        if self.used_on_current_turn is not None:
+            self.used_on_current_turn = True
+
+        return True
+
+    @abstractmethod
+    def conditions_met(self, actor: CharacterInstance, ctx: Optional[EventCtx]) -> bool:
+        pass
+
+    @abstractmethod
+    def apply_effect(self, actor: CharacterInstance, ctx: Optional[EventCtx]) -> None:
+        pass
 
 @dataclass
 class ActivePerk(Perk):
@@ -39,20 +111,16 @@ class ActivePerk(Perk):
             return False
         return True
 
-    def tick(self) -> None:
-        if self.cd_left > 0:
-            self.cd_left -= 1
-
-    def start_cooldown(self) -> None:
-        self.cd_left = self.cooldown
-
     def consume_use(self) -> None:
         if self.uses_left is not None and self.uses_left > 0:
             self.uses_left -= 1
 
-    def activate(self, actor: Operative, *args, **kwargs) -> bool:
+    def could_be_activated(self, actor: CharacterInstance, target: Optional[CharacterInstance] = None, *args, **kwargs):
         if not self.ready:
             return False
+        return self.could_be_activated(actor, target, *args, **kwargs)
+
+    def activate(self, actor: Operative, *args, **kwargs) -> bool:
         if not self.on_activate(actor, *args, **kwargs):
             return False
         self.consume_use()
@@ -69,18 +137,32 @@ class AttackPerk(ActivePerk):
     ammo_using: int = 0
     use_main_weapon = True
 
-    def activate(self, actor: Operative, *args, **kwargs) -> bool:
+    def could_be_activated(
+            self, actor: CharacterInstance, target: Optional[CharacterInstance] = None, *args, **kwargs
+    ) -> bool:
         weapon = actor.main_weapon if self.use_main_weapon else actor.side_weapon
         if self.ammo_using and isinstance(weapon, FireArmWeaponInstance):
             if weapon.current_ammo < self.ammo_using:
                 return False
-        return super().activate(actor, *args, **kwargs)
+        return super().could_be_activated(actor, *args, **kwargs)
 
+
+@dataclass
+class TargetedPerk(ActivePerk):
+    def could_be_activated(
+            self, actor: CharacterInstance, target: Optional[CharacterInstance] = None, *args, **kwargs
+    ) -> bool:
+        return super().could_be_activated(actor, target, *args, **kwargs)
+
+
+@dataclass
+class DefensivePerk(Perk):
+    pass
 
 
 @dataclass
 class EffectPerk(Perk):
-    targets: List['Character'] = field(default_factory=list)
+    targets: List['CharacterInstance'] = field(default_factory=list)
     effects: List['Effect'] = field(default_factory=list)
 
     @abstractmethod

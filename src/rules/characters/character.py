@@ -13,16 +13,14 @@ class CharacterSize(Enum):
 
 @dataclass
 class Character(ABC):
-    hp: int
-    armour: int
-    ablative: int
-    movement: int
-    view: int
-    dodge: int
-    accuracy: int
-    explosion_resistance: int
-    is_organic: bool
-    throw_distance: int
-    size: CharacterSize
-    main_weapon: WeaponInstance
-    side_weapon: WeaponInstance = None
+    hp: int = 40
+    armour: int = 1
+    ablative: int = 3
+    movement: int = 40
+    view: int = 30
+    dodge: int = 0
+    accuracy: int = 0
+    explosion_resistance: int = 0
+    is_organic: bool = True
+    throw_distance: int = 40
+    size: CharacterSize = CharacterSize.MEDIUM
