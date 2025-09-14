@@ -11,6 +11,7 @@ from src.rules.events.types import EventCtx
 
 @dataclass
 class Perk(ABC):
+    owner: CharacterInstance = field(default=None, init=False, repr=False)
     cooldown: int = 0
     is_activated: bool = True
     is_active: bool = False
@@ -161,10 +162,48 @@ class DefensivePerk(Perk):
 
 
 @dataclass
-class EffectPerk(Perk):
-    targets: List['CharacterInstance'] = field(default_factory=list)
-    effects: List['Effect'] = field(default_factory=list)
+class AuraEffectPerk(Perk):
+    activation_distance: int = 20
+
+    def remove_effect(self, target: CharacterInstance) -> None:
+        pass
+
+    def within_radius(self, target: CharacterInstance) -> bool:
+        dx, dy = target.x - self.owner.x, target.y - self.owner.y
+        return (dx * dx + dy * dy) ** 0.5 <= self.activation_distance
+
+    def is_valid_target(self, target: CharacterInstance) -> bool:
+        pass
+
+    def refresh_state(self, target: CharacterInstance) -> None:
+        if self.owner.hp <= 0:  # TODO: review product logic of death
+            self.remove_effect(target)
+            return
+        if not self.is_valid_target(target):
+            self.remove_effect(target)
+            return
+        if not self.within_radius(target):
+            self.remove_effect(target)
+            return
+
+
+    def try_trigger(self, actor: CharacterInstance, ctx: Optional[EventCtx] = None) -> bool:
+        if not self.ready():
+            return False
+        if not self.conditions_met(actor, ctx):
+            return False
+        self.apply_effect(actor, ctx)
+
+        self.start_cooldown()
+        if self.used_on_current_turn is not None:
+            self.used_on_current_turn = True
+
+        return True
 
     @abstractmethod
-    def on_activate(self, actor, *args, **kwargs) -> bool:
-        raise NotImplementedError
+    def conditions_met(self, actor: CharacterInstance, ctx: Optional[EventCtx]) -> bool:
+        pass
+
+    @abstractmethod
+    def apply_effect(self, actor: CharacterInstance, ctx: Optional[EventCtx]) -> None:
+        pass

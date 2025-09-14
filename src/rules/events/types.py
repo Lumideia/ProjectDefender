@@ -1,19 +1,10 @@
-from abc import ABC
 from dataclasses import dataclass
 from enum import Enum, auto
-from typing import Optional, Protocol
+from typing import Optional, Tuple
 
-from src.rules.characters.character import Character
-from src.rules.weapons.weapon import Weapon
+from src.enteties.character_instance import CharacterInstance
+from src.enteties.weapon_instance import WeaponInstance
 
-
-# Could be used later
-
-# class HasHP(Protocol):
-#     hp: int
-#
-# class HasWeapon(Protocol):
-#     pass
 
 class Event(Enum):
     TURN_START = auto()
@@ -23,17 +14,21 @@ class Event(Enum):
     ON_KILL = auto()
     ON_MOVE = auto()
 
-@dataclass
-class EventCtx(ABC):
+@dataclass(frozen=True)
+class EventCtx:
     pass
 
-@dataclass
-class TurnCtx:
-    actor: Character
+@dataclass(frozen=True)
+class CharacterEvent(EventCtx):
+    actor: CharacterInstance
 
-@dataclass
-class HitCtx:
-    attacker: Character
-    target: Character
+@dataclass(frozen=True)
+class MoveCtx(CharacterEvent):
+    start_pos: Tuple[int, int]
+    end_pos: Tuple[int, int]
+
+@dataclass(frozen=True)
+class HitCtx(CharacterEvent):
+    target: CharacterInstance
     distance: int
-    weapon: Optional[Weapon] = None
+    weapon: Optional[WeaponInstance] = None

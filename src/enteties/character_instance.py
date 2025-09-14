@@ -2,6 +2,7 @@ from abc import ABC
 from dataclasses import dataclass, field
 from typing import List, Dict
 
+from src.constant.world import WORLD_BUS
 from src.enteties.weapon_instance import WeaponInstance
 from src.rules.characters.character import Character
 from src.rules.effects.effect import Effect
@@ -27,11 +28,13 @@ class CharacterInstance:
         self.armour = self.character.armour
 
     def add_perk(self, perk: "Perk"):
+        perk.owner = self
         self.perks.append(perk)
         perk.on_gain(self)
         if isinstance(perk, PassiveTriggeredPerk):
             for ev in perk.events():
                 self._perk_subs.setdefault(ev, []).append(perk)
+                WORLD_BUS.on_perk_added(self, ev)
 
     def notify(self, ev: Event, ctx):
         for perk in self._perk_subs.get(ev, ()):
@@ -40,3 +43,13 @@ class CharacterInstance:
     def tick_perks(self):
         for p in self.perks:
             p.tick()
+
+    def on_turn_start(self, turn_idx: int):
+        for p in self.perks:
+            if hasattr(p, "on_turn_start"):
+                p.on_turn_start(turn_idx)
+
+    def on_turn_end(self, turn_idx: int):
+        for p in self.perks:
+            if hasattr(p, "on_turn_end"):
+                p.on_turn_end(turn_idx)
