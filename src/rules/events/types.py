@@ -1,26 +1,33 @@
 from dataclasses import dataclass
 from enum import Enum, auto
-from typing import Optional, Tuple
+from typing import Optional, Tuple, TYPE_CHECKING
 
-from src.enteties.character_instance import CharacterInstance
-from src.enteties.weapon_instance import WeaponInstance
+if TYPE_CHECKING:
+    from src.enteties.character_instance import CharacterInstance
+    from src.enteties.weapon_instance import WeaponInstance
 
 
 class Event(Enum):
     TURN_START = auto()
     TURN_END = auto()
+    ON_MOVE = auto()
     ON_HIT = auto()
     ON_DAMAGE_TAKEN = auto()
     ON_KILL = auto()
-    ON_MOVE = auto()
+
+    PRE_ATTACK = auto()
+    PRE_DEFENSE = auto()
+    SPAWN = auto()
+    DEATH = auto()
+
 
 @dataclass(frozen=True)
 class EventCtx:
-    pass
+    ev: Event
 
 @dataclass(frozen=True)
 class CharacterEvent(EventCtx):
-    actor: CharacterInstance
+    actor: "CharacterInstance"
 
 @dataclass(frozen=True)
 class MoveCtx(CharacterEvent):
@@ -29,6 +36,6 @@ class MoveCtx(CharacterEvent):
 
 @dataclass(frozen=True)
 class HitCtx(CharacterEvent):
-    target: CharacterInstance
+    target: "CharacterInstance"
     distance: int
-    weapon: Optional[WeaponInstance] = None
+    weapon: Optional["WeaponInstance"] = None
