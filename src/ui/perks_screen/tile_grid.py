@@ -90,11 +90,6 @@ class TileGrid:
     def rebuild(self, character: CharacterInstance, screen: "PerkScreen"):
         self.tiles = []
         id_to_perk = {p.perk_id: p for p in character.perks}
-        if not character.perks:
-            for row in character.perk_order:
-                for pid in row:
-                    character.add_perk(create_perk(pid))
-            id_to_perk = {p.perk_id: p for p in character.perks}
 
         for r, row in enumerate(character.perk_order):
             n = len(row)

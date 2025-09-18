@@ -1,13 +1,28 @@
 from abc import ABC
 from dataclasses import dataclass, field
+from typing import List
 
+from src.rules.dice import Dice
 from src.rules.weapons.weapon import Weapon, ThrowingWeapon, MeleeWeapon, FirearmWeapon
 
 @dataclass
 class WeaponInstance(ABC):
     current_ammo: int = field(init=False, default=0)
     weapon: Weapon
+    base_dices = List[Dice]
+    cr_dices = List[Dice]
+    movement_effects: int = field(init=False)
+    armor_destroying: int = field(init=False)
+    is_move_attack_allowed: bool = field(init=False)
+    base_atk: int = field(init=False)
 
+    def __post_init__(self):
+        self.base_dices = self.weapon.base_dices
+        self.cr_dices = self.weapon.cr_dices
+        self.movement_effects = self.weapon.movement_effects
+        self.armor_destroying = self.weapon.armor_destroying
+        self.is_move_attack_allowed = self.weapon.is_move_attack_allowed
+        self.base_atk = self.weapon.base_atk
 
 @dataclass
 class ThrowingWeaponInstance(WeaponInstance):
@@ -16,6 +31,7 @@ class ThrowingWeaponInstance(WeaponInstance):
 
     def __post_init__(self) -> None:
         self.count = self.weapon.base_count
+        super().__post_init__()
 
     def throw(self) -> bool:
         if self.count > 0:
@@ -35,6 +51,7 @@ class FireArmWeaponInstance(WeaponInstance):
 
     def __post_init__(self) -> None:
         self.current_ammo = self.weapon.mag_size
+        super().__post_init__()
 
     def shoot(self, bullets=1) -> bool:
         if self.current_ammo > 0:

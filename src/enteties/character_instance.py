@@ -4,6 +4,7 @@ from typing import List, Dict
 from src.constant.world import WORLD_BUS
 from src.enteties.weapon_instance import WeaponInstance
 from src.rules.characters.character import Character
+from src.rules.consumables.Inventory import Inventory
 from src.rules.effects.effect import Effect
 from src.rules.perks.perk import Perk
 from src.rules.events.types import Event
@@ -14,9 +15,9 @@ from src.rules.weapons.weapon import FirearmWeapon
 
 @dataclass(eq=False)
 class CharacterInstance:
-    mobility: int = 30
-    dodge: int = 0
-    accuracy: int = 0
+    mobility: int = field(init=False)
+    dodge: int = field(init=False)
+    accuracy: int = field(init=False)
     observation: bool = False
     character: Character = field(default_factory=Character)
     hp: int = field(init=False)
@@ -24,6 +25,7 @@ class CharacterInstance:
     main_weapon: WeaponInstance = field(init=False)
     side_weapon: WeaponInstance = field(init=False, default=None)
     perk_order: List[List[int]] = field(default_factory=list)
+    inventory: Inventory = field(default_factory=Inventory)
 
     effects: List[Effect] = field(default_factory=list)
     perks: List[Perk] = field(default_factory=list)
@@ -46,6 +48,14 @@ class CharacterInstance:
         WORLD_BUS.register_actor(self)
         self.hp = self.character.hp
         self.armour = self.character.armour
+        self.mobility = self.character.movement
+        self.dodge = self.character.dodge
+        self.accuracy = self.character.accuracy
+
+        for tier_row in self.perk_order:
+            for pid in tier_row:
+                self.add_perk(create_perk(pid))
+
 
     def add_perk(self, perk: "Perk"):
         perk.is_taken = None
@@ -132,14 +142,6 @@ class Grenadier(CharacterInstance):
 
     base_hp: int = 30
     base_armour: int = 5
-
-    def __post_init__(self):
-        # self.main_weapon = self.selected_weapon
-        super().__post_init__()
-
-        for tier_row in self.perk_order:
-            for pid in tier_row:
-                self.add_perk(create_perk(pid))
 
 
 @dataclass(eq=False)

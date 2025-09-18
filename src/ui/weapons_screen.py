@@ -9,9 +9,6 @@ from src.rules.calc import LegacyCalculation
 from src.rules.weapons.cover import Interference, Cover, Position
 
 
-screen = runtime.screen
-FONT = runtime.fonts["main"]
-FONT_SMALL = runtime.fonts["small"]
 full_minus_rect = full_plus_rect = half_minus_rect = half_plus_rect = None
 
 class InputBox:
@@ -19,7 +16,7 @@ class InputBox:
         self.rect = pygame.Rect(x, y, w, h)
         self.color = DARK_GRAY
         self.text = text
-        self.txt_surface = FONT.render(text, True, BLACK)
+        self.txt_surface = runtime.fonts["main"].render(text, True, BLACK)
         self.active = False
     def handle_event(self, event):
         if event.type == pygame.MOUSEBUTTONDOWN:
@@ -31,11 +28,11 @@ class InputBox:
                 self.text = self.text[:-1]
             elif event.unicode.isdigit():
                 self.text += event.unicode
-            self.txt_surface = FONT.render(self.text, True, BLACK)
+            self.txt_surface = runtime.fonts["main"].render(self.text, True, BLACK)
         return None
     def draw(self):
-        pygame.draw.rect(screen, self.color, self.rect, 2)
-        screen.blit(self.txt_surface, (self.rect.x + 5, self.rect.y + 5))
+        pygame.draw.rect(runtime.screen, self.color, self.rect, 2)
+        runtime.screen.blit(self.txt_surface, (self.rect.x + 5, self.rect.y + 5))
 
 def draw_screen_weapons():
     # заголовки/подсказки
@@ -50,6 +47,7 @@ def draw_screen_weapons():
 def handle_events_weapons(event):
     global selected_category, selected_weapon_index
     global full_interf_count, half_interf_count, selected_cover, selected_position
+
     result = weap_input_box.handle_event(event)
     if result == 'submit':
         pass
@@ -60,13 +58,13 @@ def handle_events_weapons(event):
                 selected_category = cat
                 selected_weapon_index = 0
                 weap_input_box.text = ""
-                weap_input_box.txt_surface = FONT.render("", True, BLACK)
+                weap_input_box.txt_surface = runtime.fonts["main"].render("", True, BLACK)
         # выбор оружия
         for i, rect in button_rects_weap.items():
             if rect.collidepoint(event.pos):
                 selected_weapon_index = i
                 weap_input_box.text = ""
-                weap_input_box.txt_surface = FONT.render("", True, BLACK)
+                weap_input_box.txt_surface = runtime.fonts["main"].render("", True, BLACK)
         # +/- помехи
         if full_minus_rect and full_minus_rect.collidepoint(event.pos):
             full_interf_count = max(0, full_interf_count - 1)
@@ -99,8 +97,8 @@ def draw_category_tabs_weap():
         x = x0 + i * (tab_w + gap)
         rect = pygame.Rect(x, y0, tab_w, tab_h)
         active = (selected_category == cat)
-        pygame.draw.rect(screen, GREEN if active else LIGHT_GRAY, rect, 0)
-        pygame.draw.rect(screen, BLACK, rect, 2)
+        pygame.draw.rect(runtime.screen, GREEN if active else LIGHT_GRAY, rect, 0)
+        pygame.draw.rect(runtime.screen, BLACK, rect, 2)
         draw_text(title, rect.x + 10, rect.y + 9)
         tab_rects_weap[cat] = rect
 
@@ -115,8 +113,8 @@ def draw_weapon_buttons():
         x = 10 + i * width
         y = 110
         rect = pygame.Rect(x, y, width, height)
-        pygame.draw.rect(screen, GREEN if i == selected_weapon_index else LIGHT_GRAY, rect)
-        pygame.draw.rect(screen, BLACK, rect, 2)
+        pygame.draw.rect(runtime.screen, GREEN if i == selected_weapon_index else LIGHT_GRAY, rect)
+        pygame.draw.rect(runtime.screen, BLACK, rect, 2)
         draw_text(weapon.name, x + 10, y + 10)
         button_rects_weap[i] = rect
 
@@ -203,7 +201,7 @@ def compute_and_draw_effects():
     draw_text(f"Крит. шанс: {cr}%", 570, 270)
     draw_text(f"Множитель урона: ×{round(dmg_mult, 2)}", 570, 290)
 
-def handle_events(event):
+def handle_event(event):
     handle_events_weapons(event)
 
 def draw():
@@ -213,6 +211,7 @@ def draw():
 CATEGORY_MAIN = 'main'
 CATEGORY_OTHER = 'other'
 selected_category = CATEGORY_MAIN
+custom_weapons: list = None
 selected_weapon_index = 0
 weap_input_box = InputBox(780, 125, 80, 32)
 full_interf_count = 0
@@ -228,12 +227,15 @@ selected_position = POS_EQUAL
 
 
 def get_current_weapons():
+    # если передан список оружия персонажа – использовать его
+    if custom_weapons is not None:
+        return custom_weapons
     return MAIN_WEAPONS if selected_category == CATEGORY_MAIN else OTHER_WEAPONS
 
 
-def draw_text(text, x, y, *, color=BLACK, font=FONT):
+def draw_text(text, x, y, *, color=BLACK, font=runtime.fonts["main"]):
     label = font.render(text, True, color)
-    screen.blit(label, (x, y))
+    runtime.screen.blit(label, (x, y))
 
 
 def format_dice(dice_list):
@@ -243,15 +245,15 @@ def format_dice(dice_list):
 
 def draw_count_selector(x, y, label, count):
     draw_text(label, x, y)
-    text_width = FONT.size(label)[0]
+    text_width = runtime.fonts["main"].size(label)[0]
     spacing = 20
     count_x = x + text_width + spacing
     minus_rect = pygame.Rect(count_x + 40, y - 5, 30, 30)
     plus_rect = pygame.Rect(count_x + 80, y - 5, 30, 30)
-    pygame.draw.rect(screen, LIGHT_GRAY, minus_rect)
-    pygame.draw.rect(screen, LIGHT_GRAY, plus_rect)
-    pygame.draw.rect(screen, BLACK, minus_rect, 1)
-    pygame.draw.rect(screen, BLACK, plus_rect, 1)
+    pygame.draw.rect(runtime.screen, LIGHT_GRAY, minus_rect)
+    pygame.draw.rect(runtime.screen, LIGHT_GRAY, plus_rect)
+    pygame.draw.rect(runtime.screen, BLACK, minus_rect, 1)
+    pygame.draw.rect(runtime.screen, BLACK, plus_rect, 1)
     draw_text("-", minus_rect.x + 10, minus_rect.y + 5)
     draw_text("+", plus_rect.x + 10, plus_rect.y + 5)
     draw_text(str(count), count_x, y)
@@ -264,10 +266,10 @@ def draw_radio_group(x, y, title, options, selected_key):
     bx, by = x, y + 26
     for key, label in options:
         rect = pygame.Rect(bx, by, 22, 22)
-        pygame.draw.rect(screen, LIGHT_GRAY, rect)
-        pygame.draw.rect(screen, BLACK, rect, 1)
+        pygame.draw.rect(runtime.screen, LIGHT_GRAY, rect)
+        pygame.draw.rect(runtime.screen, BLACK, rect, 1)
         if key == selected_key:
-            pygame.draw.circle(screen, BLACK, (rect.centerx, rect.centery), 6, 0)
+            pygame.draw.circle(runtime.screen, BLACK, (rect.centerx, rect.centery), 6, 0)
         draw_text(label, rect.right + 8, rect.y + 2)
         rects[key] = rect
         bx += 120

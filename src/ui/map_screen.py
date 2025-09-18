@@ -47,7 +47,7 @@ def draw_screen_map():
     draw_text("Карта / ЛОС / Двери", 10, 40, color=BLACK)
     draw_grid_map()
 
-def handle_events(event):
+def handle_event(event):
     handle_events_map(event)
 
 def draw():

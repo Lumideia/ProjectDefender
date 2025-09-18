@@ -3,6 +3,8 @@ from typing import Dict, List, Tuple, Optional
 
 from src.constant.world import WORLD_BUS
 from src.enteties.character_instance import Grenadier
+from src.rules.consumables.Inventory import Inventory
+from src.rules.consumables.consumable import DEFAULT_CONSUMABLES
 from src.rules.events.types import Event, EventCtx
 from src.rules.perks.perk import Perk
 
@@ -11,12 +13,16 @@ from src.rules.perks.description.active import ACTIVE_PERKS
 from src.rules.perks.description.aura import AURA_PERKS
 from src.rules.perks.description.one_time import ONE_TIME_PERKS
 from src.rules.perks.description.passive import PASSIVE_PERKS
+from src.ui import runtime
 from src.ui.Sidebar import Sidebar
 from src.ui.perks_screen.character_create import CreateCharacterForm
 from src.ui.perks_screen.character_stats import CharacterStatsPanel
+from src.ui.perks_screen.inventory_panel import InventoryPanel
 from src.ui.perks_screen.tile_grid import TileGrid
 from src.ui.theme import COLORS
 from src.utils.double_click import DoubleClickTracker
+
+import src.ui.weapons_screen as shoot_helper
 
 
 def _merge_titles() -> Dict[int, str]:
@@ -85,6 +91,13 @@ class PerkScreen:
         )
 
         self.grid = TileGrid(260, 180, 210, 84, 12, colors=COLORS)
+
+        self.inventory_panel = InventoryPanel(
+            x=self.start_x + self.grid.w + 20,
+            y=40,
+            w=200
+        )
+        self.inventory_modal_open = False
         # --- цвета ---
 
         self.n = 0 # TODO: Erase
@@ -98,6 +111,7 @@ class PerkScreen:
 
         self.dbl = DoubleClickTracker()
         self.btn_end_turn = pygame.Rect(sw - 200, sh - 60, 180, 50)
+        self.btn_shoot = pygame.Rect(sw - 400, sh - 60, 180, 50)
 
     # ---------------- персонажи ----------------
     def _activate(self, idx: int):
@@ -105,6 +119,8 @@ class PerkScreen:
         self.character, self.character_name = self.sidebar.characters[idx]
         self.grid.rebuild(self.character, self)
         self.stats_panel.set_character(self.character)
+        self.inventory_panel.set_character(self.character)
+
 
     def _delete_active(self):
         if not self.sidebar.characters:
@@ -143,18 +159,38 @@ class PerkScreen:
 
         # --- новая кнопка внизу ---
         self._draw_button(self.btn_end_turn, "Конец хода")
+        self._draw_button(self.btn_shoot, "Стрелять")
+
+        if self.inventory_modal_open:
+            self.inventory_panel.draw_modal(self.screen, self.font_small, self.character.inventory)
+
+            # --- показываем описание выбранного в модалке ---
+            if self.inventory_panel.modal_hovered_desc:
+                self._draw_selected_info_text(
+                    title=self.inventory_panel.modal_hovered or "",
+                    desc=self.inventory_panel.modal_hovered_desc
+                )
+            return  # блокируем отрисовку остального
+
 
         # грид
         if self.sidebar.characters and not self.create_form.active:
+            self.inventory_panel.draw(self.screen, self.font_small, self.character.inventory)
             self.stats_panel.draw(self.screen)
             self.grid.draw(self.screen)
-            if self.grid.hovered_perk:
+            if self.inventory_panel.hovered_desc:
+                self._draw_selected_info_text(
+                    title=self.inventory_panel.hovered or "",
+                    desc=self.inventory_panel.hovered_desc
+                )
+            elif self.grid.hovered_perk:
                 self._draw_selected_info(self.grid.hovered_perk)
 
         if self.renaming:
             self._draw_rename_modal()
 
         self.create_form.draw()
+
 
 
     def _draw_button(self, rect: pygame.Rect, text: str):
@@ -165,20 +201,39 @@ class PerkScreen:
         label = self.font_title.render(text, True, COLORS['TEXT'])
         self.screen.blit(label, label.get_rect(center=rect.center))
 
-    def _draw_selected_info(self, perk: Perk):
+    def _draw_info_box(self, title: str, desc: str):
         box = pygame.Rect(
             self.start_x,
             self.start_y - 100,
             self.grid.w,
             130
         )
-        pygame.draw.rect(self.screen, (18,18,28), box, border_radius=6)
+        pygame.draw.rect(self.screen, (18, 18, 28), box, border_radius=6)
         pygame.draw.rect(self.screen, COLORS['FRAME'], box, 1, border_radius=6)
-        title = self._perk_title(perk)
-        desc  = UI_DESCS.get(perk.perk_id, "")
+
         t1 = self.font_cell.render(title, True, COLORS['TEXT'])
-        self.screen.blit(t1, (box.x+10, box.y+8))
-        self._blit_wrapped(desc, (box.x+10, box.y+30), box.width-20, self.font_small, COLORS['DIM'])
+        self.screen.blit(t1, (box.x + 10, box.y + 8))
+        self._blit_wrapped(desc, (box.x + 10, box.y + 30),
+                           box.width - 20, self.font_small, COLORS['DIM'])
+
+    def _draw_selected_info_text(self, title: str, desc: str):
+        box = pygame.Rect(
+            self.start_x,
+            self.start_y - 100,
+            self.grid.w,
+            130
+        )
+        pygame.draw.rect(self.screen, (18, 18, 28), box, border_radius=6)
+        pygame.draw.rect(self.screen, COLORS['FRAME'], box, 1, border_radius=6)
+        t1 = self.font_cell.render(title, True, COLORS['TEXT'])
+        self.screen.blit(t1, (box.x + 10, box.y + 8))
+        self._blit_wrapped(desc, (box.x + 10, box.y + 30), box.width - 20, self.font_small, COLORS['DIM'])
+
+
+    def _draw_selected_info(self, perk: Perk):
+        title = self._perk_title(perk)
+        desc = UI_DESCS.get(perk.perk_id, "")
+        self._draw_info_box(title, desc)
 
     # ---------------- события ----------------
 
@@ -196,7 +251,19 @@ class PerkScreen:
             return
 
         self.sidebar.handle_event(event)
+
         if self.sidebar.characters:
+            # сначала пробрасываем клик в панель инвентаря
+            self.inventory_panel.handle_event(event, self.character.inventory,
+                                              on_add=self._open_inventory_modal)
+
+            # если открыта модалка – блокируем всё остальное
+            if self.inventory_modal_open:
+                if self.inventory_panel.handle_modal_event(event, self.character.inventory):
+                    # если внутри модалки выбран предмет – закрываем её
+                    self.inventory_modal_open = False
+                return  # <-- ВАЖНО: выходим, чтобы не обрабатывались другие элементы
+
             self.stats_panel.handle_event(event)
 
         if self.renaming:
@@ -222,11 +289,30 @@ class PerkScreen:
             if self.btn_end_turn.collidepoint(event.pos):
                 self._on_end_turn()
                 return
+
+            if self.btn_shoot.collidepoint(event.pos):
+                self._open_shoot_helper()
+                return
         else:
             self.grid.handle_event(event, double_click=False)
 
 
     # ---------------- утилиты ----------------
+    def _open_shoot_helper(self):
+        weapons = []
+        if self.character.main_weapon:
+            weapons.append(self.character.main_weapon.weapon)
+        if getattr(self.character, "side_weapon", None):
+            weapons.append(self.character.side_weapon.weapon)
+        shoot_helper.custom_weapons = weapons
+        shoot_helper.selected_weapon_index = 0  # сбросить выбор
+        runtime.current_screen = shoot_helper  # переключение экрана
+
+    def _open_inventory_modal(self):
+        """Открывает модальное окно выбора предмета."""
+        self.inventory_modal_open = True
+
+
     def _perk_title(self, perk: Perk) -> str:
         return UI_TITLES.get(perk.perk_id, perk.__class__.__name__)
 
