@@ -119,7 +119,7 @@ OTHER_WEAPONS = [
             DistanceModifier(15, accuracy_buff=-20, damage_mult=2 / 3),
             DistanceModifier(30, accuracy_buff=-40, damage_mult=1 / 3, distance_step=20)
         ],
-        mag_size=2,
+        mag_size=4,
         is_heavy=False
     ),
     MeleeWeapon(
@@ -144,4 +144,16 @@ OTHER_WEAPONS = [
         base_dices=[Dice(10), Dice(10)],
         cr_dices=[Dice(6)],
     ),
+    ThrowingWeapon(
+        name='Нож мет.',
+        base_dices=[Dice(4), Dice(4)],
+        cr_dices=[Dice(4)],
+        movement_effects=0,
+        armor_destroying=0,
+        base_count=2
+    )
 ]
+
+MAIN_WEAPONS_DICT = {weapon.name: weapon for weapon in MAIN_WEAPONS}
+
+OTHER_WEAPONS_DICT = {weapon.name: weapon for weapon in OTHER_WEAPONS}

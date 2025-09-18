@@ -36,7 +36,7 @@ class LegacyCalculation:
     cover: Cover = field(default_factory=Cover)
     interference: Interference = field(default_factory=Interference)
 
-    base_acc: int = field(default=100, init=False)
+    base_acc: int = field(default=85, init=False)
     base_cr: int = field(default=0, init=False)
 
     distance_damage_mult: float = field(default=1.0, init=False)

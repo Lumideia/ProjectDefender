@@ -22,7 +22,7 @@ class Perk(ABC):
     usage_area: int = 0
     perks_required: List['Perk'] = field(default_factory=list)
     cd_left: int = field(default=0, init=False, repr=False)
-    is_taken: bool = True
+    is_taken: Optional[bool] = None
 
     @property
     def id(self) -> int:
@@ -84,6 +84,11 @@ class PassiveTriggeredPerk(Perk):
             return False
         return True
 
+    def could_be_activated(self, actor: "CharacterInstance", target: Optional["CharacterInstance"] = None, *args, **kwargs):
+        if not self.ready():
+            return False
+        return super().could_be_activated(actor, target, *args, **kwargs)
+
     def try_trigger(self, actor: "CharacterInstance", ctx: Optional[EventCtx] = None) -> bool:
         if not self.ready():
             return False
@@ -133,7 +138,7 @@ class ActivePerk(Perk):
     def could_be_activated(self, actor: "CharacterInstance", target: Optional["CharacterInstance"] = None, *args, **kwargs):
         if not self.ready:
             return False
-        return self.could_be_activated(actor, target, *args, **kwargs)
+        return super().could_be_activated(actor, target, *args, **kwargs)
 
     def try_trigger(self, actor: "Operative", *args, **kwargs) -> bool:
         if not self.on_activate(actor, *args, **kwargs):
@@ -144,16 +149,15 @@ class ActivePerk(Perk):
 
     @abstractmethod
     def on_activate(self, actor, *args, **kwargs) -> bool:
-        ...
         return True
 
 
 @dataclass
-class AttackPerk(ActivePerk):
+class BulletSpendingPerk(ActivePerk):
     ammo_using: int = 0
     use_main_weapon = True
 
-    def could_be_activated(
+    def could_be_activated(  # TODO rewrite to ready
             self, actor: "CharacterInstance", target: Optional["CharacterInstance"] = None, *args, **kwargs
     ) -> bool:
         weapon = actor.main_weapon if self.use_main_weapon else actor.side_weapon
@@ -163,13 +167,31 @@ class AttackPerk(ActivePerk):
         return super().could_be_activated(actor, *args, **kwargs)
 
     def on_activate(self, actor, *args, **kwargs) -> bool:
+        weapon = actor.main_weapon if self.use_main_weapon else actor.side_weapon
+        weapon.current_ammo -= self.ammo_using
+        ...
+        return True
+
+class SpecialSpendingPerk(ActivePerk):
+    consumable_using: int = 0
+    use_main_weapon = True
+
+    def could_be_activated(
+            self, actor: "CharacterInstance", target: Optional["CharacterInstance"] = None, *args, **kwargs
+    ) -> bool:
+        if actor.consumable_count < self.consumable_using:
+            return False
+        return super().could_be_activated(actor, *args, **kwargs)
+
+    def on_activate(self, actor, *args, **kwargs) -> bool:
+        actor.consumable_count -= self.consumable_using
         ...
         return True
 
 
-
 @dataclass
 class AuraPerk(Perk):
+    is_activated: bool = field(default=False, init=False)
     activation_distance: int = 20
 
     def events(self) -> Tuple[Event, ...]:
