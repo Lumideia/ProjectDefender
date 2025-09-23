@@ -2,22 +2,17 @@ import pygame
 from typing import Optional, Callable, List
 
 from src.enteties.character_instance import CharacterInstance
-from src.rules.consumables.Inventory import Inventory
+from src.rules.consumables.Inventory import Inventory, InventoryCell
+from src.rules.consumables.InventoryCell import TypedInventoryCell, GenericInventoryCell
 from src.ui.theme import COLORS
-from src.rules.consumables.consumable import DEFAULT_CONSUMABLES  # список всех доступных
 
 class InventoryPanel:
-    def __init__(self, x:int, y:int, w:int, *, cells_x:int = 2, cells_y:int = 6, gap:int = 12):
-        """
-        w – общая ширина панели,
-        cells_x / cells_y – количество ячеек по горизонтали/вертикали,
-        gap – отступ между ячейками
-        """
+    def __init__(self, x: int, y: int, w: int, *, cells_x: int = 3, cells_y: int = 8, gap: int = 3):
         self.cells_x = cells_x
         self.cells_y = cells_y
-        self.cell = (w - 50 - gap*(cells_x-1)) // cells_x
+        self.cell = (w - gap * (cells_x - 1)) // cells_x
         self.gap = gap
-        h = self.cell * cells_y + gap*(cells_y-1)
+        h = self.cell * cells_y + gap * (cells_y - 1)
         self.rect = pygame.Rect(x, y, w, h)
 
         self.hovered: Optional[str] = None
@@ -28,18 +23,16 @@ class InventoryPanel:
 
         self.add_btn = pygame.Rect(self.rect.left + 20, self.rect.bottom + 20, 120, 50)
         self.modal_open = False
-        self.modal_rect = pygame.Rect(self.rect.centerx-75, self.rect.centery-50, 300, 250)
-        self.character = None
-        self.mini_font = pygame.font.SysFont("arial", 14)
+        self.modal_rect = pygame.Rect(self.rect.centerx - 75, self.rect.centery - 50, 300, 300)
+        self.character: Optional[CharacterInstance] = None
+        self.mini_font = pygame.font.SysFont("arial", 13)
 
     def set_character(self, character: CharacterInstance):
         self.character = character
-        # если нужно: создать сам Inventory, если его ещё нет
         if not hasattr(character, "inventory"):
-            character.inventory = Inventory(space=16)
+            character.inventory = Inventory()
 
     def _wrap_text(self, text: str, font: pygame.font.Font, max_width: int) -> List[str]:
-        """Переносит текст по словам чтобы не выходил за max_width."""
         words = text.split()
         lines, cur = [], ""
         for w in words:
@@ -55,11 +48,10 @@ class InventoryPanel:
         return lines
 
     def draw(self, screen: pygame.Surface, font: pygame.font.Font, inventory: Inventory):
-        # фон панели
         pygame.draw.rect(screen, (18, 18, 28), self.rect, border_radius=8)
         pygame.draw.rect(screen, COLORS['FRAME'], self.rect, 1, border_radius=8)
 
-        # кнопка добавления
+        # кнопка
         pygame.draw.rect(screen, COLORS['BTN_HL'], self.add_btn, border_radius=6)
         screen.blit(font.render("Добавить", True, COLORS['TEXT']),
                     self.add_btn.move(10, 10))
@@ -71,39 +63,49 @@ class InventoryPanel:
 
         self.hovered = None
         self.hovered_desc = None
-        items = list(inventory.consumables.items())
+
+        cells = inventory.cells
         idx = 0
         for row in range(self.cells_y):
             for col in range(self.cells_x):
-                # координаты ячейки
                 cx = offset_x + col * (self.cell + self.gap)
                 cy = offset_y + row * (self.cell + self.gap)
                 rect = pygame.Rect(cx, cy, self.cell, self.cell)
 
-                # определяем цвет: активная или неактивная
-                cell_index = row * self.cells_x + col
-                is_active = cell_index < self.character.inventory.space
-                base_color = (60, 60, 60) if is_active else (20, 20, 20)
+                if idx < len(cells):
+                    cell = cells[idx]
+                    if cell is InventoryCell:
+                        base_color = (20, 20, 20)  # неактивная
+                    elif isinstance(cell, TypedInventoryCell):
+                        base_color = (120, 80, 180)  # фиолетовая для спец. ячеек
+                    elif isinstance(cell, GenericInventoryCell):
+                        base_color = (80, 80, 80)  # обычная
+                    else:
+                        base_color = (20, 20, 20)  # fallback
 
-                pygame.draw.rect(screen, base_color, rect, border_radius=6)
-                pygame.draw.rect(screen, COLORS['FRAME'], rect, 1, border_radius=6)
+                    pygame.draw.rect(screen, base_color, rect, border_radius=6)
+                    pygame.draw.rect(screen, COLORS['FRAME'], rect, 1, border_radius=6)
 
-                if idx < len(items):
-                    name, count = items[idx]
-                    text = f"{name} x{count}"
-                    lines = self._wrap_text(text, self.mini_font, self.cell - 8)
-                    text_height = len(lines) * self.mini_font.get_height()
-                    start_y = rect.y + (rect.height - text_height) // 2
-                    for line in lines:
-                        surf = self.mini_font.render(line, True, COLORS['TEXT'])
-                        screen.blit(surf, surf.get_rect(centerx=rect.centerx, y=start_y))
-                        start_y += self.mini_font.get_height()
-                    if rect.collidepoint(pygame.mouse.get_pos()):
-                        self.hovered = name
-                        self.hovered_desc = next(
-                            (c.description for c in DEFAULT_CONSUMABLES if c.class_name == name),
-                            ""
-                        )
+                    if cell.consumable:
+                        name = cell.consumable.class_name
+                        lines = self._wrap_text(name, self.mini_font, self.cell - 8)
+                        text_height = len(lines) * self.mini_font.get_height()
+                        start_y = rect.y + (rect.height - text_height) // 2
+                        for line in lines:
+                            surf = self.mini_font.render(line, True, COLORS['TEXT'])
+                            screen.blit(surf, surf.get_rect(centerx=rect.centerx, y=start_y))
+                            start_y += self.mini_font.get_height()
+
+                        if rect.collidepoint(pygame.mouse.get_pos()):
+                            self.hovered = name
+                            self.hovered_desc = next(
+                                (c.description for c in self.character.available_consumables if c.class_name == name),
+                                ""
+                            )
+                else:
+                    # пустая недоступная ячейка
+                    pygame.draw.rect(screen, (10, 10, 10), rect, border_radius=6)
+                    pygame.draw.rect(screen, COLORS['FRAME'], rect, 1, border_radius=6)
                 idx += 1
 
         if self.modal_open:
@@ -117,11 +119,10 @@ class InventoryPanel:
         pygame.draw.rect(screen, COLORS['FRAME'], self.modal_rect, 1, border_radius=8)
 
         y = self.modal_rect.y + 10
-        for c in DEFAULT_CONSUMABLES:
+        for c in self.character.available_consumables:
             line_rect = pygame.Rect(self.modal_rect.x + 10, y, 280, 30)
             txt = font.render(c.class_name, True, COLORS['TEXT'])
             screen.blit(txt, (self.modal_rect.x + 10, y))
-            # --- проверка наведения ---
             if line_rect.collidepoint(pygame.mouse.get_pos()):
                 self.modal_hovered = c.class_name
                 self.modal_hovered_desc = c.description
@@ -131,30 +132,30 @@ class InventoryPanel:
         if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
             if self.modal_rect.collidepoint(event.pos):
                 y = self.modal_rect.y + 10
-                for c in DEFAULT_CONSUMABLES:
+                for c in self.character.available_consumables:
                     line_rect = pygame.Rect(self.modal_rect.x + 10, y, 280, 30)
                     if line_rect.collidepoint(event.pos):
-                        inventory.add_consumable(c.class_name)
-                        return True  # сигнал: закрыть модалку
+                        inventory.add_by_name(c.class_name)
+                        return True
                     y += 30
+        elif event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE:
+            return True
         return False
 
     def handle_event(self, event: pygame.event.Event, inventory: Inventory, on_add: Callable):
         if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
             if self.add_btn.collidepoint(event.pos):
-                on_add()  # <<< вызываем колбэк из PerkScreen
+                on_add()
                 return
             elif self.modal_open and self.modal_rect.collidepoint(event.pos):
-                # клик по варианту в модалке
                 y = self.modal_rect.y + 10
-                for c in DEFAULT_CONSUMABLES:
+                for c in self.character.available_consumables:
                     line_rect = pygame.Rect(self.modal_rect.x + 10, y, 280, 30)
                     if line_rect.collidepoint(event.pos):
-                        inventory.add_consumable(c.class_name)
+                        inventory.add_by_name(c.class_name)
                         self.modal_open = False
                         break
                     y += 30
             else:
-                # использование предмета
                 if self.hovered:
-                    inventory.use_consumable(self.hovered)
+                    inventory.use_by_name(self.hovered)

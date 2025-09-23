@@ -2,6 +2,7 @@ from collections import Counter
 
 import pygame
 
+from src.enteties.weapon_instance import create_weapon_instance
 from src.ui import runtime
 from src.ui.fonts_colors import BLACK, LIGHT_GRAY, DARK_GRAY, GREEN
 from src.constant.weapons import MAIN_WEAPONS, OTHER_WEAPONS
@@ -230,7 +231,8 @@ def get_current_weapons():
     # если передан список оружия персонажа – использовать его
     if custom_weapons is not None:
         return custom_weapons
-    return MAIN_WEAPONS if selected_category == CATEGORY_MAIN else OTHER_WEAPONS
+    weapons = MAIN_WEAPONS if selected_category == CATEGORY_MAIN else OTHER_WEAPONS
+    return [create_weapon_instance(weapon) for weapon in weapons]
 
 
 def draw_text(text, x, y, *, color=BLACK, font=runtime.fonts["main"]):

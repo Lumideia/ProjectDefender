@@ -1,16 +1,16 @@
 from dataclasses import dataclass, field
-from typing import List, Dict
+from typing import List, Dict, Type
 
 from src.constant.world import WORLD_BUS
 from src.enteties.weapon_instance import WeaponInstance
 from src.rules.characters.character import Character
 from src.rules.consumables.Inventory import Inventory
+from src.rules.consumables.consumable import Consumable, DEFAULT_CONSUMABLES
 from src.rules.effects.effect import Effect
 from src.rules.perks.perk import Perk
 from src.rules.events.types import Event
 from src.rules.perks.registry import create_perk
 from src.constant.weapons import MAIN_WEAPONS, OTHER_WEAPONS
-from src.rules.weapons.weapon import FirearmWeapon
 
 
 @dataclass(eq=False)
@@ -22,14 +22,19 @@ class CharacterInstance:
     character: Character = field(default_factory=Character)
     hp: int = field(init=False)
     armour: int = field(init=False)
-    main_weapon: WeaponInstance = field(init=False)
-    side_weapon: WeaponInstance = field(init=False, default=None)
+    main_weapon: WeaponInstance = field(default=None)
+    side_weapon: WeaponInstance = field(default=None)
     perk_order: List[List[int]] = field(default_factory=list)
     inventory: Inventory = field(default_factory=Inventory)
+    available_consumables: List[Type[Consumable]] = field(default_factory=lambda: DEFAULT_CONSUMABLES)
+    available_weapons = list()
+    available_side_weapons = list()
+
 
     effects: List[Effect] = field(default_factory=list)
     perks: List[Perk] = field(default_factory=list)
     _perk_subs: Dict[Event, List[Perk]] = field(default_factory=dict, init=False, repr=False)
+    max_tier_length: int = 5
 
 
     def __hash__(self):
@@ -44,6 +49,9 @@ class CharacterInstance:
                 return i
         return None
 
+    def get_perk_by_id(self, p_id):
+        return next((perk for perk in self.perks if perk.id == p_id), None)
+
     def __post_init__(self):
         WORLD_BUS.register_actor(self)
         self.hp = self.character.hp
@@ -51,18 +59,25 @@ class CharacterInstance:
         self.mobility = self.character.movement
         self.dodge = self.character.dodge
         self.accuracy = self.character.accuracy
+        self.main_weapon = None
 
+    def creation_completed(self):
+        if self.perks:
+            return
         for tier_row in self.perk_order:
             for pid in tier_row:
                 self.add_perk(create_perk(pid))
-
 
     def add_perk(self, perk: "Perk"):
         perk.is_taken = None
         perk.owner = self
         self.perks.append(perk)
-        if perk.id in self.perk_order[0]:
+        if not perk.is_main_perk:
+            self.add_additional_perk_to_order(perk)
             self.activate_perk(perk)
+        elif perk.id in self.perk_order[0]:
+            self.activate_perk(perk)
+
 
     def activate_perk(self, perk: "Perk"):
         if perk.is_taken is not None:
@@ -76,11 +91,17 @@ class CharacterInstance:
             WORLD_BUS.on_perk_added(self, ev)
 
         tier = self.find_perk_tier(perk.id)
-        if tier:
+        if tier and perk.is_main_perk:
             for p_id in self.perk_order[tier]:
                 if p_id != perk.id:
                     same_tier_perk = next((p for p in self.perks if p.id == p_id), None)
                     same_tier_perk.is_taken = False
+
+    def add_additional_perk_to_order(self, perk: "Perk"):
+        if self.perks[-2].is_main_perk or len(self.perk_order[-1]) == self.max_tier_length:
+            self.perk_order.append([perk.id])
+        else:
+            self.perk_order[-1].append(perk.id)
 
 
     def remove_perk(self, perk: "Perk") -> None:
@@ -117,21 +138,20 @@ class CharacterInstance:
             if hasattr(p, "on_turn_end"):
                 p.on_turn_end(turn_idx)
 
+    def set_main_weapon(self, weapon: "WeaponInstance"):
+        if any(weapon.weapon.name == w.name for w in self.available_weapons):
+            self.main_weapon = weapon
 
-
-AVAILABLE_FOR_GRENADIER = [
-    w for w in MAIN_WEAPONS if w.name in ("DC-15A", "DC-15S")
-]
+    def set_side_weapon(self, weapon: "WeaponInstance"):
+        if any(weapon.weapon.name == w .name for w in self.available_side_weapons):
+            self.side_weapon = weapon
 
 
 @dataclass(eq=False)
 class Grenadier(CharacterInstance):
     class_name: str = "Гренадёр"
-    available_weapons =  [MAIN_WEAPONS[1], MAIN_WEAPONS[2]]
+    available_weapons = [MAIN_WEAPONS[1], MAIN_WEAPONS[2]]
     available_side_weapons = [None]
-    selected_weapon: FirearmWeapon = field(
-        default_factory=lambda: AVAILABLE_FOR_GRENADIER[0]
-    )
     perk_order: List[List[int]] = field(default_factory=lambda: [
         [1, 87, 3, 2],
         [4, 5, 86, 6],
@@ -156,9 +176,6 @@ class MachineGunner(CharacterInstance):
         [97, 98, 56, 57],
         [99, 100, 58, 101]
     ])
-    selected_weapon: FirearmWeapon = field(
-        default_factory=lambda: AVAILABLE_FOR_GRENADIER[0]
-    )
 
 @dataclass(eq=False)
 class FlyingSoldier(CharacterInstance):
@@ -174,9 +191,6 @@ class FlyingSoldier(CharacterInstance):
     ])
     consumable_count: int = field(default=0)
     character: Character = field(default_factory=Character)
-    selected_weapon: FirearmWeapon = field(
-        default_factory=lambda: AVAILABLE_FOR_GRENADIER[0]
-    )
 
 @dataclass(eq=False)
 class Officer(CharacterInstance):
@@ -190,9 +204,6 @@ class Officer(CharacterInstance):
         [67, 68, 162, 115],
         [116, 117, 163, 118]
     ])
-    selected_weapon: FirearmWeapon = field(
-        default_factory=lambda: AVAILABLE_FOR_GRENADIER[0]
-    )
 
 @dataclass(eq=False)
 class Engineer(CharacterInstance):
@@ -206,9 +217,6 @@ class Engineer(CharacterInstance):
         [188, 189, 190, 191],
         [192, 193, 194, 195]
     ])
-    selected_weapon: FirearmWeapon = field(
-        default_factory=lambda: AVAILABLE_FOR_GRENADIER[0]
-    )
 
 @dataclass(eq=False)
 class Stormtrooper(CharacterInstance):
@@ -222,9 +230,6 @@ class Stormtrooper(CharacterInstance):
         [122, 123, 96, 75],
         [124, 160, 58, 157],
     ])
-    selected_weapon: FirearmWeapon = field(
-        default_factory=lambda: AVAILABLE_FOR_GRENADIER[0]
-    )
 
 @dataclass(eq=False)
 class Shooter(CharacterInstance):
@@ -238,9 +243,20 @@ class Shooter(CharacterInstance):
         [128, 96, 83, 56, 84],
         [129, 58, 85, 24, 169]
     ])
-    selected_weapon: FirearmWeapon = field(
-        default_factory=lambda: AVAILABLE_FOR_GRENADIER[0]
-    )
+    def set_side_weapon(self, weapon: "WeaponInstance"): # TODO: Think how to not delete
+        """Class have special perks related to specific weapons"""
+        if weapon.weapon.name == self.available_side_weapons[0].name:
+            for perk_tier in self.perk_order:
+                perk_tier.pop(-1)
+
+        elif weapon.weapon.name == self.available_side_weapons[1].name:
+            for perk_tier in self.perk_order:
+                perk_tier.pop(0)
+
+        else:
+            return
+        self.side_weapon = weapon
+
 
 @dataclass(eq=False)
 class Sniper(CharacterInstance):
@@ -254,9 +270,6 @@ class Sniper(CharacterInstance):
         [133, 219, 134, 158],
         [135, 136, 137, 100]
     ])
-    selected_weapon: FirearmWeapon = field(
-        default_factory=lambda: AVAILABLE_FOR_GRENADIER[0]
-    )
 
 @dataclass(eq=False)
 class Scout(CharacterInstance):
@@ -270,9 +283,6 @@ class Scout(CharacterInstance):
         [40, 161, 39, 126],
         [224, 58, 141, 129]
     ])
-    selected_weapon: FirearmWeapon = field(
-        default_factory=lambda: AVAILABLE_FOR_GRENADIER[0]
-    )
 
 @dataclass(eq=False)
 class Medic(CharacterInstance):
@@ -286,10 +296,6 @@ class Medic(CharacterInstance):
         [151, 145, 46, 146],
         [47, 225, 147, 148]
     ])
-    selected_weapon: FirearmWeapon = field(
-        default_factory=lambda: AVAILABLE_FOR_GRENADIER[0]
-    )
-
 @dataclass(eq=False)
 class ShieldSoldier(CharacterInstance):
     available_weapons =  [MAIN_WEAPONS[4]]
@@ -302,9 +308,6 @@ class ShieldSoldier(CharacterInstance):
         [49, 155, 228, 170],
         [171, 173, 174, 50]
     ])
-    selected_weapon: FirearmWeapon = field(
-        default_factory=lambda: AVAILABLE_FOR_GRENADIER[0]
-    )
 
 @dataclass(eq=False)
 class ForceUser(CharacterInstance):
@@ -318,9 +321,6 @@ class ForceUser(CharacterInstance):
         [208, 209, 210, 211],
         [212, 213, 214, 215],
     ])
-    selected_weapon: FirearmWeapon = field(
-        default_factory=lambda: AVAILABLE_FOR_GRENADIER[0]
-    )
 
 CHARACTER_CLASSES = [
     Grenadier,

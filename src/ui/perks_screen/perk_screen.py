@@ -2,10 +2,9 @@ import pygame
 from typing import Dict, List, Tuple, Optional
 
 from src.constant.world import WORLD_BUS
-from src.enteties.character_instance import Grenadier
-from src.rules.consumables.Inventory import Inventory
-from src.rules.consumables.consumable import DEFAULT_CONSUMABLES
+from src.enteties.character_instance import Grenadier, ForceUser
 from src.rules.events.types import Event, EventCtx
+from src.rules.perks.index import get_additional_jedi_perks, get_additional_common_perks
 from src.rules.perks.perk import Perk
 
 # --- загрузка текстов перков ---
@@ -14,7 +13,8 @@ from src.rules.perks.description.aura import AURA_PERKS
 from src.rules.perks.description.one_time import ONE_TIME_PERKS
 from src.rules.perks.description.passive import PASSIVE_PERKS
 from src.ui import runtime
-from src.ui.Sidebar import Sidebar
+from src.ui.perks_screen.Sidebar import Sidebar
+from src.ui.perks_screen.additional_perks_panel import AdditionalPerksPanel
 from src.ui.perks_screen.character_create import CreateCharacterForm
 from src.ui.perks_screen.character_stats import CharacterStatsPanel
 from src.ui.perks_screen.inventory_panel import InventoryPanel
@@ -63,9 +63,9 @@ class PerkScreen:
 
         # --- шрифты ---
         self.font_title = pygame.font.SysFont("arial", 28, bold=True)
-        self.font_cell  = pygame.font.SysFont("arial", 18)
+        self.font_cell  = pygame.font.SysFont("arial", 16)
         self.font_small = pygame.font.SysFont("arial", 16)
-        self.font_cd    = pygame.font.SysFont("arial", 22, bold=True)
+        self.font_cd    = pygame.font.SysFont("arial", 16, bold=True)
 
         # --- layout ---
         self.cell_w, self.cell_h = 210, 84
@@ -73,7 +73,7 @@ class PerkScreen:
         self.start_x, self.start_y = 260, 140
         self.sidebar = Sidebar(20, 120, 230)
 
-        self.create_form = CreateCharacterForm(self.screen)
+        self.create_form = CreateCharacterForm(self, self.screen)
         self.form_active = False
         self.form_close_time = 0
         self.form_click_lock = 200
@@ -90,17 +90,26 @@ class PerkScreen:
             h=250
         )
 
-        self.grid = TileGrid(260, 180, 210, 84, 12, colors=COLORS)
+        self.grid = TileGrid(260, 180, 210, 50, 12, colors=COLORS)
 
         self.inventory_panel = InventoryPanel(
-            x=self.start_x + self.grid.w + 20,
+            x=self.start_x + self.grid.w + 10,
             y=40,
             w=200
         )
         self.inventory_modal_open = False
-        # --- цвета ---
 
-        self.n = 0 # TODO: Erase
+
+        self.random_perks_panel = AdditionalPerksPanel(
+            self, pygame.Rect(
+                0,
+                40,
+                int(sw),
+                int(sh * 0.85),
+            ),
+    [])
+        self.random_perks_modal_open = False
+        # --- цвета ---
 
         # --- верхние кнопки ---
 
@@ -112,6 +121,10 @@ class PerkScreen:
         self.dbl = DoubleClickTracker()
         self.btn_end_turn = pygame.Rect(sw - 200, sh - 60, 180, 50)
         self.btn_shoot = pygame.Rect(sw - 400, sh - 60, 180, 50)
+        self.btn_rnd_perks = pygame.Rect(sw - 600, sh - 60, 180, 50)
+
+        self.character = None
+        self.active_modal: Optional[object] = None
 
     # ---------------- персонажи ----------------
     def _activate(self, idx: int):
@@ -160,6 +173,8 @@ class PerkScreen:
         # --- новая кнопка внизу ---
         self._draw_button(self.btn_end_turn, "Конец хода")
         self._draw_button(self.btn_shoot, "Стрелять")
+        if self.character:
+            self._draw_button(self.btn_rnd_perks, "Ранд. навыки")
 
         if self.inventory_modal_open:
             self.inventory_panel.draw_modal(self.screen, self.font_small, self.character.inventory)
@@ -190,6 +205,8 @@ class PerkScreen:
             self._draw_rename_modal()
 
         self.create_form.draw()
+        if self.character:
+            self.random_perks_panel.draw(self.screen, self.character)
 
 
 
@@ -238,13 +255,22 @@ class PerkScreen:
     # ---------------- события ----------------
 
     def handle_event(self, event: pygame.event.Event):
-        if self.create_form.active:
-            new_char = self.create_form.handle_event(event)
-            if new_char:
-                self.sidebar.add_character(new_char, new_char.character.name)
-                self._activate(len(self.sidebar.characters) - 1)
-                self.grid.rebuild(self.character, self)
-                self.form_close_time = pygame.time.get_ticks()
+        # TODO: REFACTOR THIS PIECE OF ...
+        if self.active_modal:
+            if self.create_form.active:
+                new_char = self.create_form.handle_event(event)
+                if new_char:
+                    self.sidebar.add_character(new_char, new_char.character.name)
+                    self._activate(len(self.sidebar.characters) - 1)
+                    self.grid.rebuild(self.character, self)
+                    self.form_close_time = pygame.time.get_ticks()
+
+            elif self.random_perks_panel.active:
+                new_perk = self.random_perks_panel.handle_event(event, self.character)
+                if new_perk:
+                    self.character.add_perk(new_perk)
+                    self.grid.rebuild(self.character, self)
+
             return
 
         if pygame.time.get_ticks() - self.form_close_time < self.form_click_lock:
@@ -260,7 +286,6 @@ class PerkScreen:
             # если открыта модалка – блокируем всё остальное
             if self.inventory_modal_open:
                 if self.inventory_panel.handle_modal_event(event, self.character.inventory):
-                    # если внутри модалки выбран предмет – закрываем её
                     self.inventory_modal_open = False
                 return  # <-- ВАЖНО: выходим, чтобы не обрабатывались другие элементы
 
@@ -293,6 +318,13 @@ class PerkScreen:
             if self.btn_shoot.collidepoint(event.pos):
                 self._open_shoot_helper()
                 return
+
+            if self.btn_rnd_perks.collidepoint(event.pos):
+                perks = (get_additional_jedi_perks() if isinstance(self.character, ForceUser)
+                         else get_additional_common_perks())
+                self.random_perks_panel.perks = list(perks)
+                self.random_perks_panel.open()
+                return
         else:
             self.grid.handle_event(event, double_click=False)
 
@@ -301,9 +333,9 @@ class PerkScreen:
     def _open_shoot_helper(self):
         weapons = []
         if self.character.main_weapon:
-            weapons.append(self.character.main_weapon.weapon)
+            weapons.append(self.character.main_weapon)
         if getattr(self.character, "side_weapon", None):
-            weapons.append(self.character.side_weapon.weapon)
+            weapons.append(self.character.side_weapon)
         shoot_helper.custom_weapons = weapons
         shoot_helper.selected_weapon_index = 0  # сбросить выбор
         runtime.current_screen = shoot_helper  # переключение экрана

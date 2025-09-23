@@ -14,11 +14,11 @@ class CharacterSize(Enum):
 class Consumable(ABC):
     class_name: str = None
     description: str = None
-    max_count: Optional[int] = 5
     throw_distance: int = 30
     radius: int = 15
     ends_turn: bool = False
-    default = True
+    default: bool = True
+    is_using_space: bool = True
 
     def apply(self):
         pass
@@ -26,15 +26,21 @@ class Consumable(ABC):
 class Grenade(Consumable):
     ...
 
+class DamageGrenade(Grenade):
+    ...
+
+class NonDamageGrenade(Grenade):
+    ...
+
 @dataclass
-class ThermalDetonator(Consumable):
+class ThermalDetonator(DamageGrenade):
     class_name: str = "Терм детонатор"
     description: str = "Стандартная боевая граната, имеющая диаметр взрыва 15 футов. Может быть брошена на расстояние до 30 футов. Дистанция броска считается к эпицентру взрыва. Бросок заканчивает ход. Наносит: 3д6 единиц урона"
     def apply(self):
         pass
 
 @dataclass
-class EMIGrenade(Grenade):
+class EMIGrenade(DamageGrenade):
     class_name: str = "ЭМИ граната"
     description: str = "Специализированная боевая граната, не наносящая урона для органики. Диаметр взрыва равен 15 футов. Может быть брошена на расстояние до 30 футов. Дистанция броска считается к эпицентру взрыва. Бросок заканчивает ход. Наносит: 3д8 урона механизированным целям и имеет 20% разрядить энергетическое оружие. С шансом 90% выключает на один ход энергетические щиты"
     def apply(self):
@@ -50,7 +56,7 @@ class BaktaSpray(Consumable):
 
 
 @dataclass
-class Smoke(Grenade):
+class Smoke(NonDamageGrenade):
     class_name: str = "Дымовая"
     description: str = "Стандартная вспомогательная граната создающая область задымления, уменьшающую шансы при стрельбе как по целям в ней, так и при стрельбе сквозь неё на 20%. Диаметр взрыва равен 15 футов. Может быть брошена на расстояние до 30 футов. Дистанция броска считается к эпицентру взрыва. Бросок заканчивает ход"
 
@@ -68,7 +74,7 @@ class EnergeticWeb(Consumable):
 
 
 @dataclass
-class Flashing(Grenade):
+class Flashing(NonDamageGrenade):
     class_name: str = "Свето звуковая"
     description: str = "Стандартная вспомогательная граната, создающая яркую вспышку сопровождаемую крайне высокочастотным звуком. Накладывает дезориентацию на всех органических противников в диаметре 25 футов от места взрыва. Может быть брошена на расстояние до 40 футов. Дистанция броска считается к эпицентру взрыва. Бросок заканчивает ход"
 
@@ -77,7 +83,7 @@ class Flashing(Grenade):
 
 
 @dataclass
-class GasGrenade(Consumable):
+class GasGrenade(DamageGrenade):
     class_name: str = "Газовая"
     description: str = "Стандартная боевая граната, создающая ядовитое облако в диаметре 15 футов. Облако висит 3 хода. Органические цели получают отравление, если проходят сквозь облако. Отравление: 1д6 урона на протяжении трёх ходов. Уменьшение мобильности на 10 футов. Уменьшение меткости на 10. Может быть брошена на расстояние до 30 футов. Дистанция броска считается к эпицентру взрыва. Бросок заканчивает ход"
 
@@ -86,13 +92,22 @@ class GasGrenade(Consumable):
 
 
 @dataclass
-class ImpulseGrenade(Grenade):
+class ImpulseGrenade(NonDamageGrenade):
     class_name: str = "Импульс"
     description: str = "Стандартная вспомогательная грана, отбрасывающая цели в диаметре 15 футов от себя на дистанцию 10 футов. Отброшенный противник получает -10 уклонения. Если отброшенный противник является органическим и ударяется о преграду, он получает дезориентацию. Может быть брошена на расстояние до 30 футов. Дистанция броска считается к эпицентру взрыва. Бросок заканчивает ход"
 
     def apply(self):
         pass
 
+@dataclass
+class Cryogen(DamageGrenade):
+    class_name: str = "Морозная граната"
+    description: str = "Наносит 2д8 урона в зоне 15 футов и накладывает эффект лютого мороза. Лютый мороз:+ длительность: 3 хода+ мобильность снижена в два раза+ меткость: -20%+ получаемый урон от огня: +1д20+ каждый ход оружие может с шансом 30% закоротить, придется делать перезарядку+ каждый ход цель может получить переохлаждение с шансом 30% и полностью потерять ход"
+
+@dataclass
+class Bandage(Consumable):
+    class_name: str = "Бинт"
+    description: str = "Восстанавливают 1д6 единиц здоровья. Используются одним любым действием"
 
 DEFAULT_CONSUMABLES = [
     ThermalDetonator,

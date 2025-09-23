@@ -2,8 +2,14 @@
 from dataclasses import dataclass, field
 from typing import Optional, TYPE_CHECKING, List
 
+from src.rules.consumables.InventoryCell import GrenadeOnlyCell, TypedInventoryCell
+from src.rules.consumables.consumable import Smoke, Grenade, ThermalDetonator, Flashing, BaktaSpray, EnergeticWeb, \
+    EMIGrenade, GasGrenade, ImpulseGrenade, Cryogen, DamageGrenade, NonDamageGrenade, Bandage
+from src.rules.dice import Dice
 from src.rules.events.types import EventCtx
-from src.rules.perks.perk import PassiveOneTimePerk, PassiveTriggeredPerk, ActivePerk, AuraPerk, Perk
+from src.rules.perks.perk import (
+    PassiveOneTimePerk, PassiveTriggeredPerk, ActivePerk, AuraPerk, AdditionalPerk, AdditionalJediPerk
+)
 from src.rules.perks.registry import register_perk
 
 if TYPE_CHECKING:
@@ -15,9 +21,13 @@ class GrenadeTraining(PassiveOneTimePerk):
     def apply_once(self, actor): ...
 
 @dataclass
-@register_perk(2)
+@register_perk(2) # TODO: Not completed, test
 class DemolitionBag(PassiveOneTimePerk):
-    def apply_once(self, actor): ...
+    def apply_once(self, actor):
+        for _ in range(7):
+            actor.inventory.add_cell(GrenadeOnlyCell())
+        self.is_completed = True
+
 
 @dataclass
 @register_perk(3)
@@ -27,12 +37,18 @@ class HighQualityExplosives(PassiveOneTimePerk):
 @dataclass
 @register_perk(4)
 class HeavyArtillery(PassiveOneTimePerk):
-    def apply_once(self, actor): ...
+    def apply_once(self, actor):
+        actor.inventory.add_cell(TypedInventoryCell(available_consumables=[DamageGrenade]))
+        actor.inventory.add_cell(TypedInventoryCell(available_consumables=[DamageGrenade]))
+        self.is_completed = True
 
 @dataclass
 @register_perk(5)
 class CoverBag(PassiveOneTimePerk):
-    def apply_once(self, actor): ...
+    def apply_once(self, actor):
+        actor.inventory.add_cell(TypedInventoryCell(available_consumables=[NonDamageGrenade]))
+        actor.inventory.add_cell(TypedInventoryCell(available_consumables=[NonDamageGrenade]))
+        self.is_completed = True
 
 @dataclass
 @register_perk(6)
@@ -52,7 +68,8 @@ class DenseSmoke(PassiveOneTimePerk):
 @dataclass
 @register_perk(9)
 class MiniGrenades(PassiveOneTimePerk):
-    def apply_once(self, actor): ...
+    def apply_once(self, actor):
+        DemolitionBag().apply_once(actor)
 
 @dataclass
 @register_perk(10)
@@ -127,7 +144,9 @@ class WeightyArgument(PassiveOneTimePerk):
 @dataclass
 @register_perk(24)
 class Lethality(PassiveOneTimePerk):
-    def apply_once(self, actor): ...
+    def apply_once(self, actor):
+        actor.main_weapon.base_dices.extend([Dice(6), Dice(6)])
+        self.is_completed = True
 
 @dataclass
 @register_perk(25)
@@ -137,7 +156,9 @@ class DualWielding(PassiveOneTimePerk):
 @dataclass
 @register_perk(26)
 class PistolMaster(PassiveOneTimePerk):
-    def apply_once(self, actor): ...
+    def apply_once(self, actor):
+        actor.main_weapon.base_dices = [Dice(10)]
+        self.is_completed = True
 
 @dataclass
 @register_perk(27)
@@ -152,7 +173,9 @@ class TimeToKill(PassiveOneTimePerk):
 @dataclass
 @register_perk(29)
 class GoodPreparation(PassiveOneTimePerk):
-    def apply_once(self, actor): ...
+    def apply_once(self, actor):
+        actor.mobility = 40
+        self.is_completed = True
 
 @dataclass
 @register_perk(30)
@@ -182,7 +205,9 @@ class LowVisibility(PassiveOneTimePerk):
 @dataclass
 @register_perk(35)
 class DeadOnTarget(PassiveOneTimePerk):
-    def apply_once(self, actor): ...
+    def apply_once(self, actor):
+        actor.main_weapon.base_dices.extend([Dice(4), Dice(4), Dice(4)])
+        self.is_completed = True
 
 @dataclass
 @register_perk(36)
@@ -212,12 +237,21 @@ class SilentKiller(PassiveOneTimePerk):
 @dataclass
 @register_perk(41)
 class LightBandaging(PassiveOneTimePerk):
-    def apply_once(self, actor): ...
+    def apply_once(self, actor):
+        actor.available_consumables.append(Bandage)
+        for _ in range(10):
+            cell = actor.inventory.add_cell(TypedInventoryCell(available_consumables=[Bandage]))
+            actor.inventory.add_to_specific_cell(cell, Bandage())
+        self.is_completed = True
 
 @dataclass
 @register_perk(42)
 class BactaReserve(PassiveOneTimePerk):
-    def apply_once(self, actor): ...
+    def apply_once(self, actor):
+        for _ in range(3):
+            cell = actor.inventory.add_cell(TypedInventoryCell(available_consumables=[BaktaSpray]))
+            actor.inventory.add_to_specific_cell(cell, BaktaSpray())
+        self.is_completed = True
 
 @dataclass
 @register_perk(43)
@@ -227,17 +261,25 @@ class HighQualityBacta(PassiveOneTimePerk):
 @dataclass
 @register_perk(44)
 class Smoker(PassiveOneTimePerk):
-    def apply_once(self, actor): ...
+    def apply_once(self, actor):
+        cell = actor.inventory.add_cell(TypedInventoryCell(available_consumables=[Smoke]))
+        actor.inventory.add_to_specific_cell(cell, Smoke())
+        self.is_completed = True
 
 @dataclass
 @register_perk(45)
 class FieldMedic(PassiveOneTimePerk):
-    def apply_once(self, actor): ...
+    def apply_once(self, actor):
+        BactaReserve().apply_once(actor)
+        self.is_completed = True
 
 @dataclass
 @register_perk(46)
-class BactaSpray(PassiveOneTimePerk):
-    def apply_once(self, actor): ...
+class BaktaSpraying(PassiveOneTimePerk):
+    def apply_once(self, actor):
+        cell = actor.inventory.add_cell(TypedInventoryCell(available_consumables=[Smoke]))
+        actor.inventory.add_to_specific_cell(cell, Smoke())
+        self.is_completed = True
 
 @dataclass
 @register_perk(47)
@@ -247,7 +289,9 @@ class TrueSavior(PassiveOneTimePerk):
 @dataclass
 @register_perk(48)
 class PistolMasterPlus(PassiveOneTimePerk):
-    def apply_once(self, actor): ...
+    def apply_once(self, actor):
+        actor.main_weapon.base_dices.append(Dice(4))
+        self.is_completed = True
 
 @dataclass
 @register_perk(49)
@@ -257,7 +301,9 @@ class Unyielding(PassiveOneTimePerk):
 @dataclass
 @register_perk(50)
 class LethalDamage(PassiveOneTimePerk):
-    def apply_once(self, actor): ...
+    def apply_once(self, actor):
+        actor.main_weapon.base_dices = [Dice(4), Dice(4), Dice(4)]
+        self.is_completed = True
 
 @dataclass
 @register_perk(51)
@@ -1832,9 +1878,859 @@ class SpecialTechnique(PassiveTriggeredPerk):
 
 @dataclass
 @register_perk(230)
-class SpecialTechnique(PassiveTriggeredPerk):
+class BackFire(PassiveTriggeredPerk):
     def conditions_met(self, actor: "CharacterInstance", ctx: Optional[EventCtx]) -> bool:
         return True
 
     def apply_effect(self, actor: "CharacterInstance", ctx: Optional[EventCtx]) -> None:
         ...
+
+
+@dataclass
+@register_perk(231)
+class WillToLiveAdditional(AdditionalPerk, WillToLive):
+    points_cost: int = 15
+
+
+@dataclass
+@register_perk(232)
+class Mist(AdditionalPerk, PassiveOneTimePerk):
+    points_cost: int = 5
+    def apply_once(self, actor: "CharacterInstance") -> None:
+        cell = actor.inventory.add_cell(TypedInventoryCell(available_consumables=[Smoke]))
+        actor.inventory.add_to_specific_cell(cell, Smoke())
+        self.is_completed = True
+
+
+@dataclass
+@register_perk(233)
+class Resilience(AdditionalPerk, PassiveTriggeredPerk):
+    points_cost: int = 10
+    def conditions_met(self, actor: "CharacterInstance", ctx: Optional[EventCtx]) -> bool:
+        return True
+
+    def apply_effect(self, actor: "CharacterInstance", ctx: Optional[EventCtx]) -> None:
+        pass
+
+@dataclass
+@register_perk(234)
+class Illuminator(AdditionalPerk, PassiveOneTimePerk):
+    points_cost: int = 5
+
+    def apply_once(self, actor: "CharacterInstance") -> None:
+        cell = actor.inventory.add_cell(TypedInventoryCell(available_consumables=[Flashing]))
+        actor.inventory.add_to_specific_cell(cell, Flashing())
+        self.is_completed = True
+
+@dataclass
+@register_perk(235)
+class ShoulderBag(AdditionalPerk, PassiveOneTimePerk):
+    points_cost: int = 15
+    def apply_once(self, actor: "CharacterInstance") -> None:
+        ...
+
+@dataclass
+@register_perk(236)
+class SureAim(AdditionalPerk, PassiveTriggeredPerk):
+    points_cost: int = 20
+    def conditions_met(self, actor: "CharacterInstance", ctx: Optional[EventCtx]) -> bool:
+        return True
+
+    def apply_effect(self, actor: "CharacterInstance", ctx: Optional[EventCtx]) -> None:
+        pass
+
+@dataclass
+@register_perk(237)
+class Sprinter(AdditionalPerk, PassiveOneTimePerk):
+    points_cost: int = 5
+    def apply_once(self, actor: "CharacterInstance") -> None:
+        ...
+
+@dataclass
+@register_perk(238)
+class TacticalSense(AdditionalPerk, ActivePerk):
+    cooldown: int = 2
+    points_cost: int = 15
+
+    def on_activate(self, actor, *args, **kwargs):
+        return True
+
+@dataclass
+@register_perk(239) # TODO: Think
+class TraumaticGrenadesAdditional(AdditionalPerk, TraumaticGrenades):
+    points_cost: int = 20
+    def apply_once(self, actor: "CharacterInstance") -> None:
+        ...
+
+@dataclass
+@register_perk(240)
+class Watcher(AdditionalPerk, PassiveOneTimePerk):
+    points_cost: int = 20
+    def apply_once(self, actor: "CharacterInstance") -> None:
+        ...
+
+@dataclass
+@register_perk(241)
+class Savior(AdditionalPerk, PassiveOneTimePerk):
+    points_cost: int = 10
+    def apply_once(self, actor: "CharacterInstance") -> None:
+        ...
+
+@dataclass
+@register_perk(242)
+class SelfSacrifice(AdditionalPerk, ActivePerk):
+    points_cost: int = 20
+    cooldown: int = 2
+
+    def on_activate(self, actor, *args, **kwargs):
+        return True
+
+@dataclass
+@register_perk(243)
+class Downpour(AdditionalPerk, PassiveTriggeredPerk):
+    points_cost: int = 15
+
+    def conditions_met(self, actor: "CharacterInstance", ctx: Optional[EventCtx]) -> bool:
+        return True
+
+    def apply_effect(self, actor: "CharacterInstance", ctx: Optional[EventCtx]) -> None:
+        pass
+
+@dataclass
+@register_perk(244)
+class ShockWave(AdditionalPerk, PassiveTriggeredPerk):
+    points_cost: int = 15
+
+    def conditions_met(self, actor: "CharacterInstance", ctx: Optional[EventCtx]) -> bool:
+        return True
+
+    def apply_effect(self, actor: "CharacterInstance", ctx: Optional[EventCtx]) -> None:
+        pass
+
+@dataclass
+@register_perk(245)
+class LowSilhouetteAdditional(AdditionalPerk, LowSilhouette):
+    points_cost: int = 20
+
+@dataclass
+@register_perk(246)
+class HandyWeapon(AdditionalPerk, PassiveOneTimePerk):
+    points_cost: int = 20
+    def apply_once(self, actor: "CharacterInstance") -> None:
+        ...
+
+@dataclass
+@register_perk(247)
+class SurefireShotAdditional(AdditionalPerk, SurefireShot):
+    is_activated: bool = True
+    points_cost: int = 30
+    cooldown: int = 3
+
+@dataclass
+@register_perk(248)
+class Fortification(AdditionalPerk, ActivePerk):
+    is_activated: bool = True
+    points_cost: int = 15
+    cooldown: int = 3
+
+    def on_activate(self, actor, *args, **kwargs):
+        return True
+
+@dataclass
+@register_perk(249)
+class SmokeScreen(AdditionalPerk, PassiveOneTimePerk):
+    points_cost: int = 10
+    def apply_once(self, actor: "CharacterInstance") -> None:
+        ...
+
+@dataclass
+@register_perk(250)
+class BattleHardened(AdditionalPerk, CombatHardened):
+    points_cost: int = 25
+
+
+
+
+
+@dataclass
+@register_perk(251)
+class CloseContactsAdditional(AdditionalPerk, CloseContacts):
+    points_cost: int = 20
+
+
+@dataclass
+@register_perk(252)
+class PainReaction(AdditionalPerk, PassiveTriggeredPerk):
+    points_cost: int = 15
+
+    def conditions_met(self, actor: "CharacterInstance", ctx: Optional[EventCtx]) -> bool:
+        return True
+
+    def apply_effect(self, actor: "CharacterInstance", ctx: Optional[EventCtx]) -> None:
+        pass
+
+@dataclass
+@register_perk(253)
+class Bastion(AdditionalPerk, PassiveOneTimePerk):
+    points_cost: int = 10
+    def apply_once(self, actor: "CharacterInstance") -> None:
+        ...
+
+@dataclass
+@register_perk(254)
+class DashAdditional(AdditionalPerk, Dash):
+    is_activated: bool = True
+    points_cost: int = 15
+    move_bonus: int = 20
+
+@dataclass
+@register_perk(255)
+class LoneWolfAdditional(AdditionalPerk, LoneWolf):
+    points_cost: int = 20
+    acc_and_def_bonus: int = 20
+
+@dataclass
+@register_perk(256)
+class PreciseShotAdditional(AdditionalPerk, PreciseShot):
+    is_activated: bool = True
+    points_cost: int = 25
+    cr_bonus: int = 20
+
+@dataclass
+@register_perk(257)
+class LickingWoundsAdditional(AdditionalPerk, LickingWounds):
+    points_cost: int = 5
+
+
+@dataclass
+@register_perk(258)
+class ScoutPerk(AdditionalPerk, ActivePerk):
+    points_cost: int = 15
+    cooldown: int = 2
+
+    def on_activate(self, actor, *args, **kwargs):
+        return True
+
+    def on_gain(self, actor: "CharacterInstance") -> bool:
+        ...
+
+@dataclass
+@register_perk(259)
+class BloodRail(AdditionalPerk, PassiveTriggeredPerk):
+    points_cost: int = 10
+
+    def conditions_met(self, actor: "CharacterInstance", ctx: Optional[EventCtx]) -> bool:
+        return True
+
+    def apply_effect(self, actor: "CharacterInstance", ctx: Optional[EventCtx]) -> None:
+        pass
+
+@dataclass
+@register_perk(260)
+class Pharmacist(AdditionalPerk, PassiveOneTimePerk):
+    points_cost: int = 5
+
+    def apply_once(self, actor: "CharacterInstance") -> None:
+        cell = actor.inventory.add_cell(TypedInventoryCell(available_consumables=[BaktaSpray]))
+        actor.inventory.add_to_specific_cell(cell, BaktaSpray())
+        self.is_completed = True
+    
+@dataclass
+@register_perk(261)
+class Immobilizer(AdditionalPerk, PassiveOneTimePerk):
+    points_cost: int = 5
+    def apply_once(self, actor: "CharacterInstance") -> None:
+        cell = actor.inventory.add_cell(TypedInventoryCell(available_consumables=[EnergeticWeb]))
+        actor.inventory.add_to_specific_cell(cell, EnergeticWeb())
+        self.is_completed = True
+
+@dataclass
+@register_perk(262)
+class MagChange(AdditionalPerk, PassiveTriggeredPerk):
+    points_cost: int = 10
+
+    def conditions_met(self, actor: "CharacterInstance", ctx: Optional[EventCtx]) -> bool:
+        return True
+
+    def apply_effect(self, actor: "CharacterInstance", ctx: Optional[EventCtx]) -> None:
+        pass
+
+@dataclass
+@register_perk(263)
+class Concentration(AdditionalPerk, PassiveOneTimePerk):
+    points_cost: int = 5
+    def apply_once(self, actor: "CharacterInstance") -> None:
+        ...
+
+@dataclass
+@register_perk(264)
+class WarDrugs(AdditionalPerk, PassiveOneTimePerk):
+    points_cost: int = 10
+    def apply_once(self, actor: "CharacterInstance") -> None:
+        ...
+
+
+@dataclass
+@register_perk(265)
+class PreparationAdditional(AdditionalPerk, Preparation):
+    points_cost: int = 25
+
+
+@dataclass
+@register_perk(266)
+class HitAndRunAdditional(AdditionalPerk, HitAndRun):
+    points_cost: int = 20
+
+@dataclass
+@register_perk(267)
+class InvulnerabilityAdditional(AdditionalPerk, Invulnerability):
+    points_cost: int = 30
+
+@dataclass
+@register_perk(268)
+class RuptureAdditional(AdditionalPerk, Rupture):
+    armor_destroying: int = 25
+    points_cost: int = 25
+
+@dataclass
+@register_perk(269)
+class QuickHandsAdditional(AdditionalPerk, QuickHands):
+    points_cost: int = 15
+
+@dataclass
+@register_perk(270)
+class RapidFireAdditional(AdditionalPerk, RapidFire):
+    points_cost: int = 30
+
+@dataclass
+@register_perk(271)
+class CounterShot(AdditionalPerk, PassiveTriggeredPerk):
+    points_cost: int = 15
+
+    def conditions_met(self, actor: "CharacterInstance", ctx: Optional[EventCtx]) -> bool:
+        return True
+
+    def apply_effect(self, actor: "CharacterInstance", ctx: Optional[EventCtx]) -> None:
+        pass
+
+@dataclass
+@register_perk(272)
+class Parkour(AdditionalPerk, PassiveOneTimePerk):
+    points_cost: int = 10
+    def apply_once(self, actor: "CharacterInstance") -> None:
+        ...
+
+
+@dataclass
+@register_perk(273)
+class HiddenReserves(AdditionalPerk, ActivePerk):
+    points_cost: int = 20
+    usage_count: int = 1
+
+    def on_activate(self, actor, *args, **kwargs):
+        return True
+
+    def on_gain(self, actor: "CharacterInstance") -> bool:
+        ...
+
+@dataclass
+@register_perk(274)
+class Unshaken(AdditionalPerk, PassiveTriggeredPerk):
+    points_cost: int = 20
+
+    def conditions_met(self, actor: "CharacterInstance", ctx: Optional[EventCtx]) -> bool:
+        return True
+
+    def apply_effect(self, actor: "CharacterInstance", ctx: Optional[EventCtx]) -> None:
+        pass
+
+
+@dataclass
+@register_perk(275)
+class AR(AdditionalPerk, PassiveOneTimePerk):
+    points_cost: int = 15
+    def apply_once(self, actor: "CharacterInstance") -> None:
+        ...
+
+@dataclass
+@register_perk(276)
+class Predator(AdditionalPerk, PassiveOneTimePerk):
+    points_cost: int = 15
+    def apply_once(self, actor: "CharacterInstance") -> None:
+        ...
+
+@dataclass
+@register_perk(277)
+class Bullseye(AdditionalPerk, PassiveOneTimePerk):
+    points_cost: int = 15
+    def apply_once(self, actor: "CharacterInstance") -> None:
+        ...
+
+@dataclass
+@register_perk(278)
+class ThickPadding(AdditionalPerk, ActivePerk):
+    points_cost: int = 10
+
+    def on_activate(self, actor, *args, **kwargs):
+        return True
+
+    def on_gain(self, actor: "CharacterInstance") -> bool:
+        ...
+
+@dataclass
+@register_perk(279)
+class CoverMe(AdditionalPerk, ActivePerk):
+    points_cost: int = 15
+    cooldown: int = 2
+
+    def on_activate(self, actor, *args, **kwargs):
+        return True
+
+    def on_gain(self, actor: "CharacterInstance") -> bool:
+        ...
+
+@dataclass
+@register_perk(280)
+class BonusExplosive(AdditionalPerk, PassiveOneTimePerk):
+    points_cost: int = 5
+
+    def apply_once(self, actor: "CharacterInstance") -> None:
+        cell = actor.inventory.add_cell(TypedInventoryCell(available_consumables=[ThermalDetonator]))
+        actor.inventory.add_to_specific_cell(cell, ThermalDetonator())
+        self.is_completed = True
+
+@dataclass
+@register_perk(281)
+class Jamming(AdditionalPerk, PassiveOneTimePerk):
+    points_cost: int = 5
+
+    def apply_once(self, actor: "CharacterInstance") -> None:
+        cell = actor.inventory.add_cell(TypedInventoryCell(available_consumables=[EMIGrenade]))
+        actor.inventory.add_to_specific_cell(cell, EMIGrenade())
+        self.is_completed = True
+
+@dataclass
+@register_perk(282)
+class Kubikiri(AdditionalPerk, PassiveTriggeredPerk):
+    points_cost: int = 25
+
+    def conditions_met(self, actor: "CharacterInstance", ctx: Optional[EventCtx]) -> bool:
+        return True
+
+    def apply_effect(self, actor: "CharacterInstance", ctx: Optional[EventCtx]) -> None:
+        pass
+
+@dataclass
+@register_perk(283)
+class OffensiveStrike(AdditionalPerk, PassiveTriggeredPerk):
+    points_cost: int = 10
+
+    def conditions_met(self, actor: "CharacterInstance", ctx: Optional[EventCtx]) -> bool:
+        return True
+
+    def apply_effect(self, actor: "CharacterInstance", ctx: Optional[EventCtx]) -> None:
+        pass
+
+@dataclass
+@register_perk(284)
+class ArmoredRun(AdditionalPerk, ActivePerk):
+    cooldown: int = 2
+    points_cost: int = 10
+
+    def on_activate(self, actor, *args, **kwargs) -> bool:
+        return True
+
+@dataclass
+@register_perk(285)
+class CantHide(AdditionalPerk, PassiveTriggeredPerk):
+    points_cost: int = 15
+
+    def conditions_met(self, actor: "CharacterInstance", ctx: Optional[EventCtx]) -> bool:
+        return True
+
+    def apply_effect(self, actor: "CharacterInstance", ctx: Optional[EventCtx]) -> None:
+        pass
+
+@dataclass
+@register_perk(286)
+class StationaryThreat(AdditionalPerk, PassiveTriggeredPerk):
+    points_cost: int = 25
+
+    def conditions_met(self, actor: "CharacterInstance", ctx: Optional[EventCtx]) -> bool:
+        return True
+
+    def apply_effect(self, actor: "CharacterInstance", ctx: Optional[EventCtx]) -> None:
+        pass
+
+@dataclass
+@register_perk(287)
+class Assassin(AdditionalPerk, PassiveTriggeredPerk):
+    points_cost: int = 10
+
+    def conditions_met(self, actor: "CharacterInstance", ctx: Optional[EventCtx]) -> bool:
+        return True
+
+    def apply_effect(self, actor: "CharacterInstance", ctx: Optional[EventCtx]) -> None:
+        pass
+
+@dataclass
+@register_perk(288)
+class ImpactShot(AdditionalPerk, ActivePerk):
+    points_cost: int = 10
+    cooldown: int = 0
+
+    def on_activate(self, actor, *args, **kwargs):
+        return True
+
+    def on_gain(self, actor: "CharacterInstance") -> bool:
+        ...
+
+@dataclass
+@register_perk(289)
+class StrongBody(AdditionalPerk, PassiveOneTimePerk):
+    points_cost: int = 5
+    def apply_once(self, actor: "CharacterInstance") -> None:
+        ...
+
+@dataclass
+@register_perk(290)
+class Knockdown(AdditionalPerk, ActivePerk):
+    points_cost: int = 10
+    cooldown: int = 0
+
+    def on_activate(self, actor, *args, **kwargs):
+        return True
+
+@dataclass
+@register_perk(291)
+class ISurvive(AdditionalPerk, PassiveTriggeredPerk):
+    is_activated: bool = True
+    usage_count: int = 1
+    points_cost: int = 25
+
+    def conditions_met(self, actor: "CharacterInstance", ctx: Optional[EventCtx]) -> bool:
+        return True
+
+    def apply_effect(self, actor: "CharacterInstance", ctx: Optional[EventCtx]) -> None:
+        pass
+
+@dataclass
+@register_perk(292)
+class ScenarioShield(AdditionalPerk, PassiveTriggeredPerk):
+    is_activated: bool = True
+    usage_count: int = 1
+    points_cost: int = 20
+
+    def conditions_met(self, actor: "CharacterInstance", ctx: Optional[EventCtx]) -> bool:
+        return True
+
+    def apply_effect(self, actor: "CharacterInstance", ctx: Optional[EventCtx]) -> None:
+        pass
+
+@dataclass
+@register_perk(293)
+class ThrowingKnives(AdditionalPerk, PassiveOneTimePerk):
+    points_cost: int = 25
+    def apply_once(self, actor: "CharacterInstance") -> None:
+        ...
+
+@dataclass
+@register_perk(294)
+class HeavyArmor(AdditionalPerk, PassiveOneTimePerk):
+    points_cost: int = 10
+    def apply_once(self, actor: "CharacterInstance") -> None:
+        ...
+
+@dataclass
+@register_perk(295)
+class BreakTime(AdditionalPerk, ActivePerk):
+    points_cost: int = 10
+
+    def on_activate(self, actor, *args, **kwargs):
+        return True
+
+@dataclass
+@register_perk(296)
+class SlidingShot(AdditionalPerk, ActivePerk):
+    cooldown: int = 2
+    points_cost: int = 15
+
+    def on_activate(self, actor, *args, **kwargs):
+        return True
+
+@dataclass
+@register_perk(297)
+class VeteranShooter(AdditionalPerk, PassiveTriggeredPerk):
+    points_cost: int = 15
+
+    def conditions_met(self, actor: "CharacterInstance", ctx: Optional[EventCtx]) -> bool:
+        return True
+
+    def apply_effect(self, actor: "CharacterInstance", ctx: Optional[EventCtx]) -> None:
+        pass
+
+@dataclass
+@register_perk(298)
+class Poisoner(AdditionalPerk, PassiveOneTimePerk):
+    points_cost: int = 5
+
+    def apply_once(self, actor: "CharacterInstance") -> None:
+        cell = actor.inventory.add_cell(TypedInventoryCell(available_consumables=[GasGrenade]))
+        actor.inventory.add_to_specific_cell(cell, GasGrenade())
+        self.is_completed = True
+
+@dataclass
+@register_perk(299) # TODO: Not actually impulse, product gap
+class NapalmLover(AdditionalPerk, PassiveOneTimePerk):
+    points_cost: int = 5
+
+    def apply_once(self, actor: "CharacterInstance") -> None:
+        cell = actor.inventory.add_cell(TypedInventoryCell(available_consumables=[ImpulseGrenade]))
+        actor.inventory.add_to_specific_cell(cell, ImpulseGrenade())
+        self.is_completed = True
+
+@dataclass
+@register_perk(300)
+class RestlessFighter(AdditionalPerk, PassiveTriggeredPerk):
+    points_cost: int = 10
+
+    def conditions_met(self, actor: "CharacterInstance", ctx: Optional[EventCtx]) -> bool:
+        return True
+
+    def apply_effect(self, actor: "CharacterInstance", ctx: Optional[EventCtx]) -> None:
+        pass
+
+@dataclass
+@register_perk(301)
+class ControlledFire(AdditionalPerk, PassiveTriggeredPerk):
+    points_cost: int = 20
+
+    def conditions_met(self, actor: "CharacterInstance", ctx: Optional[EventCtx]) -> bool:
+        return True
+
+    def apply_effect(self, actor: "CharacterInstance", ctx: Optional[EventCtx]) -> None:
+        pass
+
+@dataclass
+@register_perk(302)
+class Interruption(AdditionalPerk, PassiveTriggeredPerk):
+    points_cost: int = 10
+
+    def conditions_met(self, actor: "CharacterInstance", ctx: Optional[EventCtx]) -> bool:
+        return True
+
+    def apply_effect(self, actor: "CharacterInstance", ctx: Optional[EventCtx]) -> None:
+        pass
+
+@dataclass
+@register_perk(303)
+class Alertness(AdditionalPerk, PassiveTriggeredPerk):
+    points_cost: int = 15
+
+    def conditions_met(self, actor: "CharacterInstance", ctx: Optional[EventCtx]) -> bool:
+        return True
+
+    def apply_effect(self, actor: "CharacterInstance", ctx: Optional[EventCtx]) -> None:
+        pass
+
+@dataclass
+@register_perk(304)
+class AntiTankWarhead(AdditionalPerk, PassiveOneTimePerk):
+    points_cost: int = 10
+    def apply_once(self, actor: "CharacterInstance") -> None:
+        ...
+
+@dataclass
+@register_perk(305)
+class StickyMine(AdditionalPerk, ActivePerk):
+    cooldown: int = 0
+    points_cost: int = 10
+
+    def on_activate(self, actor, *args, **kwargs):
+        return True
+
+@dataclass
+@register_perk(306)
+class ParamedicAdditional(AdditionalPerk, Paramedic):
+    points_cost: int = 15
+
+
+@dataclass
+@register_perk(307)
+class Cryogenic(AdditionalPerk, PassiveOneTimePerk):
+    points_cost: int = 10
+
+    def apply_once(self, actor: "CharacterInstance") -> None:
+        actor.available_consumables.append(Cryogen)
+        cell = actor.inventory.add_cell(TypedInventoryCell(available_consumables=[Cryogen]))
+        actor.inventory.add_to_specific_cell(cell, Cryogen())
+        self.is_completed = True
+
+@dataclass
+@register_perk(308)
+class Adrenaline(AdditionalPerk, PassiveTriggeredPerk):
+    points_cost: int = 20
+
+    def conditions_met(self, actor: "CharacterInstance", ctx: Optional[EventCtx]) -> bool:
+        return True
+
+    def apply_effect(self, actor: "CharacterInstance", ctx: Optional[EventCtx]) -> None:
+        pass
+
+@dataclass
+@register_perk(309)
+class LayeredDefense(AdditionalPerk, PassiveOneTimePerk):
+    points_cost: int = 30
+    def apply_once(self, actor: "CharacterInstance") -> None:
+        ...
+
+@dataclass
+@register_perk(310)
+class KineticCharge(AdditionalPerk, PassiveTriggeredPerk):
+    points_cost: int = 15
+
+    def conditions_met(self, actor: "CharacterInstance", ctx: Optional[EventCtx]) -> bool:
+        return True
+
+    def apply_effect(self, actor: "CharacterInstance", ctx: Optional[EventCtx]) -> None:
+        pass
+
+@dataclass
+@register_perk(311)
+class Absorption(AdditionalJediPerk, PassiveTriggeredPerk):
+    points_cost: int = 15
+
+    def conditions_met(self, actor: "CharacterInstance", ctx: Optional[EventCtx]) -> bool:
+        return True
+
+    def apply_effect(self, actor: "CharacterInstance", ctx: Optional[EventCtx]) -> None:
+        pass
+
+
+@dataclass
+@register_perk(312)
+class JediAdrenaline(AdditionalJediPerk, Adrenaline):
+    points_cost: int = 20
+
+
+@dataclass
+@register_perk(313)
+class Attraction(AdditionalJediPerk, ActivePerk):
+    cooldown: int = 0
+    points_cost: int = 15
+
+    def on_activate(self, actor, *args, **kwargs):
+        return True
+
+@dataclass
+@register_perk(314)
+class JediMoves(AdditionalJediPerk, Parkour):
+    points_cost: int = 5
+
+@dataclass
+@register_perk(315)
+class BreakWeapon(AdditionalJediPerk, ActivePerk):
+    points_cost: int = 10
+
+    def on_activate(self, actor, *args, **kwargs):
+        return True
+
+@dataclass
+@register_perk(316)
+class JediScenarioShield(AdditionalJediPerk, ScenarioShield):
+    pass
+
+@dataclass
+@register_perk(317)
+class ForceBoost(AdditionalJediPerk, ActivePerk):
+    points_cost: int = 20
+
+    def on_activate(self, actor, *args, **kwargs):
+        return True
+
+@dataclass
+@register_perk(318)
+class ForceStabilize(AdditionalJediPerk, ActivePerk):
+    points_cost: int = 15
+
+    def on_activate(self, actor, *args, **kwargs):
+        return True
+
+@dataclass
+@register_perk(319)
+class JediStrongBody(AdditionalJediPerk, StrongBody):
+    pass
+
+@dataclass
+@register_perk(320)
+class JediHiddenReserves(AdditionalJediPerk, HiddenReserves):
+    pass
+
+@dataclass
+@register_perk(321)
+class ForceUnity(AdditionalJediPerk, PassiveTriggeredPerk):
+    points_cost: int = 15
+
+    def conditions_met(self, actor: "CharacterInstance", ctx: Optional[EventCtx]) -> bool:
+        return True
+
+    def apply_effect(self, actor: "CharacterInstance", ctx: Optional[EventCtx]) -> None:
+        pass
+
+@dataclass
+@register_perk(322)
+class Swordmaster(AdditionalJediPerk, PassiveOneTimePerk):
+    points_cost: int = 10
+    def apply_once(self, actor: "CharacterInstance") -> None:
+        ...
+
+@dataclass
+@register_perk(323)
+class ForceJump(AdditionalJediPerk, ActivePerk):
+    points_cost: int = 10
+
+    def on_activate(self, actor, *args, **kwargs):
+        return True
+
+@dataclass
+@register_perk(324)
+class JediLickingWoundsAdditional(AdditionalJediPerk, LickingWounds):
+    ...
+
+@dataclass
+@register_perk(325)
+class ForceBind(AdditionalJediPerk, ActivePerk):
+    points_cost: int = 20
+
+    def on_activate(self, actor, *args, **kwargs):
+        return True
+
+@dataclass
+@register_perk(326)
+class JediSprinter(AdditionalJediPerk, Sprinter):
+    ...
+
+@dataclass
+@register_perk(327)
+class ForceMaster(AdditionalJediPerk, PassiveOneTimePerk):
+    points_cost: int = 25
+    def apply_once(self, actor: "CharacterInstance") -> None:
+        ...
+
+@dataclass
+@register_perk(328)
+class JediSelfSacrifice(AdditionalJediPerk, SelfSacrifice):
+    ...
+
+@dataclass
+@register_perk(329)
+class JediLayeredDefense(AdditionalJediPerk, LayeredDefense):
+    ...
+
+@dataclass
+@register_perk(330)
+class StrikeFlurry(AdditionalJediPerk, ActivePerk):
+    points_cost: int = 20
+
+    def on_activate(self, actor, *args, **kwargs):
+        return True

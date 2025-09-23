@@ -5,7 +5,8 @@ from src.enteties.weapon_instance import create_weapon_instance
 
 
 class CreateCharacterForm:
-    def __init__(self, screen: pygame.Surface):
+    def __init__(self, parent, screen: pygame.Surface):
+        self.parent = parent
         self.screen = screen
         self.active = False
 
@@ -26,9 +27,12 @@ class CreateCharacterForm:
     def open(self):
         self.active = True
         self.name_text = ""
+        self.parent.active_modal = self
 
     def close(self):
         self.active = False
+        if self.parent.active_modal is self:
+            self.parent.active_modal = None
 
     def draw(self):
         if not self.active:
@@ -139,15 +143,16 @@ class CreateCharacterForm:
         cls = CHARACTER_CLASSES[self.selected_class]
         weapon = self.available_weapons[self.selected_weapon]
 
-        side_weapon = self.available_side_weapons[self.selected_side_weapon] if self.selected_side_weapon is not None else None
+        side_weapon = (
+            self.available_side_weapons[self.selected_side_weapon]
+            if self.selected_side_weapon is not None
+            else None
+        )
         name = self.name_text or f"{cls.class_name} #{pygame.time.get_ticks()}"
         char = cls()
-        char.main_weapon = create_weapon_instance(weapon)
-        char.side_weapon = create_weapon_instance(side_weapon) if side_weapon else None
-        if char.side_weapon:
-            print(char.main_weapon.weapon.name, char.side_weapon.weapon.name)
-        else:
-            print('No')
+        char.set_main_weapon(create_weapon_instance(weapon))
+        char.set_side_weapon(create_weapon_instance(side_weapon)) if side_weapon else None
         char.character.name = name
+        char.creation_completed()
         self.close()
         return char

@@ -25,8 +25,12 @@ class PerkTile:
 
     @staticmethod
     def perk_color(perk: Perk):
-        if not perk.is_taken:
+        if perk.is_taken is None:
             return COLORS['NOT_TAKEN']
+        if not perk.is_taken:
+            return COLORS['CANCELED']
+        if perk.is_completed:
+            return COLORS['COMPLETED']
         if not perk.is_activated:
             return COLORS['PASSIVE']
         if not perk.could_be_activated(perk.owner):

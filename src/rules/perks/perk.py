@@ -15,7 +15,7 @@ if TYPE_CHECKING:
 class Perk(ABC):
     owner: "CharacterInstance" = field(default=None, init=False, repr=False)
     cooldown: int = 0
-    is_activated: bool = True
+    is_activated: bool = False
     is_active: bool = False
     is_amendable: bool = False
     available_classes: List["Operative"] = field(default_factory=list)
@@ -23,6 +23,9 @@ class Perk(ABC):
     perks_required: List['Perk'] = field(default_factory=list)
     cd_left: int = field(default=0, init=False, repr=False)
     is_taken: Optional[bool] = None
+    is_main_perk: bool = True
+    usage_count: int = None
+    is_completed: bool = False # TODO: Change after implementing all perks
 
     @property
     def id(self) -> int:
@@ -43,8 +46,15 @@ class Perk(ABC):
     def on_gain(self, actor: "CharacterInstance") -> bool:
         pass
 
+    def consume_use(self) -> None:
+        if self.uses_left is not None and self.uses_left > 0:
+            self.uses_left -= 1
+
     def events(self) -> Tuple[Event, ...]:
         return ()
+
+    def __post_init__(self) -> None:
+        self.uses_left = self.usage_count
 
 
 
@@ -80,6 +90,8 @@ class PassiveTriggeredPerk(Perk):
             return False
         if self.cd_left > 0:
             return False
+        if self.uses_left is not None and self.uses_left == 0:
+            return False
         if self.used_on_current_turn:
             return False
         return True
@@ -94,6 +106,7 @@ class PassiveTriggeredPerk(Perk):
             return False
         if not self.conditions_met(actor, ctx):
             return False
+        self.consume_use()
         self.apply_effect(actor, ctx)
 
         self.start_cooldown()
@@ -113,11 +126,7 @@ class PassiveTriggeredPerk(Perk):
 @dataclass
 class ActivePerk(Perk):
     is_ends_turn: bool = False
-    is_active: bool = field(default=True, init=False)
-    usage_count: int = None
-
-    def __post_init__(self) -> None:
-        self.uses_left = self.usage_count
+    is_activated: bool = field(default=True, init=False)
 
     @property
     def ready(self) -> bool:
@@ -131,9 +140,6 @@ class ActivePerk(Perk):
             return False
         return True
 
-    def consume_use(self) -> None:
-        if self.uses_left is not None and self.uses_left > 0:
-            self.uses_left -= 1
 
     def could_be_activated(self, actor: "CharacterInstance", target: Optional["CharacterInstance"] = None, *args, **kwargs):
         if not self.ready:
@@ -203,3 +209,15 @@ class AuraPerk(Perk):
     @abstractmethod
     def apply_to_ctx(self, owner: "CharacterInstance", ctx: EventCtx) -> bool:
         pass
+
+
+@dataclass
+class AdditionalPerk:
+    is_main_perk: bool = False
+    points_cost: int = 0
+    is_jedi_perk: bool = False
+
+@dataclass
+class AdditionalJediPerk(AdditionalPerk):
+    is_jedi_perk: bool = field(default=True)
+

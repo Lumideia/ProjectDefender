@@ -16,7 +16,7 @@ class Character(ABC):
     hp: int = 40
     armour: int = 1
     ablative: int = 3
-    movement: int = 40
+    movement: int = 30
     view: int = 30
     dodge: int = 0
     accuracy: int = 0

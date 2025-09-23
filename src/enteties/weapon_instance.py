@@ -17,12 +17,14 @@ class WeaponInstance(ABC):
     base_atk: int = field(init=False)
 
     def __post_init__(self):
+        self.name = self.weapon.name
         self.base_dices = self.weapon.base_dices
         self.cr_dices = self.weapon.cr_dices
         self.movement_effects = self.weapon.movement_effects
         self.armor_destroying = self.weapon.armor_destroying
         self.is_move_attack_allowed = self.weapon.is_move_attack_allowed
         self.base_atk = self.weapon.base_atk
+
 
 @dataclass
 class ThrowingWeaponInstance(WeaponInstance):
