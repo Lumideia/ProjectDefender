@@ -1,14 +1,13 @@
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
-from typing import List, Optional, Tuple, TYPE_CHECKING
-
+from typing import List, Optional, Tuple, TYPE_CHECKING, Type
 
 from src.rules.events.types import EventCtx, Event
 from src.enteties.weapon_instance import FireArmWeaponInstance
 
 if TYPE_CHECKING:
 
-    from src.enteties.character_instance import CharacterInstance
+    from src.enteties.character_instance import CharacterInstance, ForceUser
     from src.rules.characters.operative import Operative
 
 @dataclass
@@ -20,11 +19,12 @@ class Perk(ABC):
     is_amendable: bool = False
     available_classes: List["Operative"] = field(default_factory=list)
     usage_area: int = 0
-    perks_required: List['Perk'] = field(default_factory=list)
+    perks_required: List[Type['Perk']] = field(default_factory=list)
     cd_left: int = field(default=0, init=False, repr=False)
     is_taken: Optional[bool] = None
     is_main_perk: bool = True
     usage_count: int = None
+    on_gain_used: bool = field(default=False, init=False)
     is_completed: bool = False # TODO: Change after implementing all perks
 
     @property
@@ -43,7 +43,13 @@ class Perk(ABC):
     ) -> bool:
         return True
 
-    def on_gain(self, actor: "CharacterInstance") -> bool:
+    def on_gain(self, actor: "CharacterInstance") -> None:
+        if self.on_gain_used:
+            return
+        self.apply_once(actor)
+        self.on_gain_used = True
+
+    def apply_once(self, actor: "CharacterInstance") -> None:
         pass
 
     def consume_use(self) -> None:
@@ -62,17 +68,7 @@ class Perk(ABC):
 class PassiveOneTimePerk(Perk):
     """Perk which works only once to grant some special improvements"""
     is_activated: bool = field(default=False, init=False)
-    used: bool = field(default=False, init=False)
 
-    def on_gain(self, actor: "CharacterInstance") -> None:
-        if self.used:
-            return
-        self.apply_once(actor)
-        self.used = True
-
-    @abstractmethod
-    def apply_once(self, actor: "CharacterInstance") -> None:
-        pass
 
 @dataclass
 class PassiveTriggeredPerk(Perk):
@@ -101,7 +97,7 @@ class PassiveTriggeredPerk(Perk):
             return False
         return super().could_be_activated(actor, target, *args, **kwargs)
 
-    def try_trigger(self, actor: "CharacterInstance", ctx: Optional[EventCtx] = None) -> bool:
+    def try_trigger(self, actor: "CharacterInstance", ctx: Optional[EventCtx] = None, *args, **kwargs) -> bool:
         if not self.ready():
             return False
         if not self.conditions_met(actor, ctx):
@@ -128,7 +124,6 @@ class ActivePerk(Perk):
     is_ends_turn: bool = False
     is_activated: bool = field(default=True, init=False)
 
-    @property
     def ready(self) -> bool:
         if not self.is_taken:
             return False
@@ -142,11 +137,11 @@ class ActivePerk(Perk):
 
 
     def could_be_activated(self, actor: "CharacterInstance", target: Optional["CharacterInstance"] = None, *args, **kwargs):
-        if not self.ready:
+        if not self.ready():
             return False
         return super().could_be_activated(actor, target, *args, **kwargs)
 
-    def try_trigger(self, actor: "Operative", *args, **kwargs) -> bool:
+    def try_trigger(self, actor: "CharacterInstance", *args, **kwargs) -> bool:
         if not self.on_activate(actor, *args, **kwargs):
             return False
         self.consume_use()
@@ -210,6 +205,64 @@ class AuraPerk(Perk):
     def apply_to_ctx(self, owner: "CharacterInstance", ctx: EventCtx) -> bool:
         pass
 
+
+@dataclass
+class ForceActivePerk(ActivePerk):
+    owner: "ForceUser" = field(default=None, init=False, repr=False)
+    use_force_points: Optional[int] = 0
+    could_be_use_as_inertia: bool = False
+
+    def force_use(self, amount: int = None) -> None:
+        to_use = amount if amount is not None else self.use_force_points
+        if self.owner.force_points >= to_use:
+            self.owner.force_points -= to_use
+
+    def ready(self) -> bool:
+        if self.owner.inertia and not self.could_be_use_as_inertia:
+            return False
+        if self.use_force_points is not None and self.owner.force_points < self.use_force_points:
+            return False
+        return super().ready()
+
+    def try_trigger(self, actor: "ForceUser", *args, **kwargs) -> bool:
+        if super().try_trigger(actor, *args, **kwargs):
+            self.force_use(kwargs.get('use_force_points', self.use_force_points))
+            return True
+        return False
+
+    @abstractmethod
+    def on_activate(self, actor, *args, **kwargs) -> bool:
+        return True
+
+
+@dataclass
+class ForcePassiveTriggeredPerk(PassiveTriggeredPerk):
+    owner: "ForceUser" = field(default=None, init=False, repr=False)
+    use_force_points: Optional[int] = 0
+
+    def force_use(self, amount: int = None) -> None:
+        to_use = amount if amount is not None else self.use_force_points
+        if self.owner.force_points >= to_use:
+            self.owner.force_points -= to_use
+
+    def ready(self) -> bool:
+        if self.use_force_points is not None and self.owner.force_points < self.use_force_points:
+            return False
+        return super().ready()
+
+    def try_trigger(self, actor: "CharacterInstance", ctx: Optional[EventCtx] = None, *args, **kwargs) -> bool:
+        if super().try_trigger(actor, ctx, *args, **kwargs):
+            self.force_use(kwargs.get('use_force_points', self.use_force_points))
+            return True
+        return False
+
+    @abstractmethod
+    def conditions_met(self, actor: "CharacterInstance", ctx: Optional[EventCtx]) -> bool:
+        pass
+
+    @abstractmethod
+    def apply_effect(self, actor: "CharacterInstance", ctx: Optional[EventCtx]) -> None:
+        pass
 
 @dataclass
 class AdditionalPerk:

@@ -2,7 +2,7 @@ import pygame
 
 
 class DoubleClickTracker:
-    def __init__(self, delay_ms=200):
+    def __init__(self, delay_ms=250):
         self.delay_ms = delay_ms
         self._last_time = 0
         self._armed = False

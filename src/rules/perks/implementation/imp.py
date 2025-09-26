@@ -8,12 +8,14 @@ from src.rules.consumables.consumable import Smoke, Grenade, ThermalDetonator, F
 from src.rules.dice import Dice
 from src.rules.events.types import EventCtx
 from src.rules.perks.perk import (
-    PassiveOneTimePerk, PassiveTriggeredPerk, ActivePerk, AuraPerk, AdditionalPerk, AdditionalJediPerk
+    PassiveOneTimePerk, PassiveTriggeredPerk, ActivePerk, AuraPerk, AdditionalPerk, AdditionalJediPerk, ForceActivePerk,
+    ForcePassiveTriggeredPerk
 )
 from src.rules.perks.registry import register_perk
 
 if TYPE_CHECKING:
-    from src.enteties.character_instance import CharacterInstance
+    from src.enteties.character_instance import CharacterInstance, ForceUser
+
 
 @dataclass
 @register_perk(1)
@@ -1584,7 +1586,12 @@ class WillToLive(PassiveTriggeredPerk):
 class Meditation(ActivePerk):
     cooldown: int = 1
 
+    def on_gain(self, actor: "ForceUser") -> None:
+        actor.max_force_points += 9
+        actor.restore_force_points()
+
     def on_activate(self, actor, *args, **kwargs):
+        actor.restore_force_points()
         return True
 
 @dataclass
@@ -1596,37 +1603,45 @@ class Inertia(PassiveTriggeredPerk):
         return True
 
     def apply_effect(self, actor: "CharacterInstance", ctx: Optional[EventCtx]) -> None:
-        ...
+        actor.inertia = True
 
 @dataclass
 @register_perk(198) # TODO: INERTIAL PROPERTY ADD CONSUME
-class LightsaberThrow(ActivePerk):
+class LightsaberThrow(ForceActivePerk):
     cooldown: int = 1
+    use_force_points: int = 1
+    could_be_use_as_inertia: bool = True
 
     def on_activate(self, actor, *args, **kwargs):
         return True
 
 @dataclass
 @register_perk(199) # TODO: INERTIAL PROPERTY ADD CONSUME
-class DefensiveStance(ActivePerk):
+class DefensiveStance(ForceActivePerk):
     cooldown: int = 1
+    use_force_points: int = 1
+    could_be_use_as_inertia: bool = True
 
     def on_activate(self, actor, *args, **kwargs):
         return True
 
 @dataclass
 @register_perk(200)  # TODO: INERTIAL PROPERTY ADD CONSUME
-class ForceLift(ActivePerk):
+class ForceLift(ForceActivePerk):
     cooldown: int = 1
+    use_force_points: int = 1
+    could_be_use_as_inertia: bool = True
 
     def on_activate(self, actor, *args, **kwargs):
         return True
 
 @dataclass
 @register_perk(201) # TODO: ADD CONSUME
-class ForceBubble(PassiveTriggeredPerk):
+class ForceBubble(ForcePassiveTriggeredPerk):
     is_activated: bool = True
     cooldown: int = 1
+    use_force_points: int = 3
+
     def conditions_met(self, actor: "CharacterInstance", ctx: Optional[EventCtx]) -> bool:
         return True
 
@@ -1635,105 +1650,125 @@ class ForceBubble(PassiveTriggeredPerk):
 
 @dataclass
 @register_perk(202) # TODO: ADD CONSUME (WANTED COUNT)
-class Ionization(ActivePerk):
+class Ionization(ForceActivePerk):
     cooldown: int = 1
+    use_force_points: int = 1
 
     def on_activate(self, actor, *args, **kwargs):
         return True
 
 @dataclass
 @register_perk(203) # TODO: INERTIAL PROPERTY ADD CONSUME
-class ForceFlash(ActivePerk):
+class ForceFlash(ForceActivePerk):
+    use_force_points: int = 2
     cooldown: int = 1
+    could_be_use_as_inertia: bool = True
 
     def on_activate(self, actor, *args, **kwargs):
         return True
 
 @dataclass
 @register_perk(204) # TODO: INERTIAL PROPERTY ADD CONSUME
-class ForcePush(ActivePerk):
+class ForcePush(ForceActivePerk):
     cooldown: int = 1
+    use_force_points: int = 2
+    could_be_use_as_inertia: bool = True
 
     def on_activate(self, actor, *args, **kwargs):
         return True
 
 @dataclass
 @register_perk(205) # TODO: INERTIAL PROPERTY ADD CONSUME COVER ADD
-class ForceBarrier(ActivePerk):
+class ForceBarrier(ForceActivePerk):
     cooldown: int = 1
+    use_force_points: int = 2
+    could_be_use_as_inertia: bool = True
 
     def on_activate(self, actor, *args, **kwargs):
         return True
 
 @dataclass
 @register_perk(206) # TODO: INERTIAL PROPERTY ADD CONSUME
-class ForceStun(ActivePerk):
+class ForceStun(ForceActivePerk):
     cooldown: int = 1
+    use_force_points: int = 1
+    could_be_use_as_inertia: bool = True
 
     def on_activate(self, actor, *args, **kwargs):
         return True
 
 @dataclass
 @register_perk(207) # TODO: INERTIAL PROPERTY(!!) ADD CONSUME
-class JumpAttack(ActivePerk):
+class JumpAttack(ForceActivePerk):
     cooldown: int = 1
+    use_force_points: int = 2
 
     def on_activate(self, actor, *args, **kwargs):
+        actor.inertia = True
         return True
 
 @dataclass
 @register_perk(208)
-class ForceBurst(ActivePerk):
+class ForceBurst(ForceActivePerk):
     cooldown: int = 1
     perks_required: list = field(default_factory=lambda: [ForcePush])
+    use_force_points: int = 4
+    could_be_use_as_inertia: bool = True
 
     def on_activate(self, actor, *args, **kwargs):
         return True
 
 @dataclass
 @register_perk(209) # TODO: ADD CONSUME ADD JOPA
-class ForcePersuasion(ActivePerk):
+class ForcePersuasion(ForceActivePerk):
     cooldown: int = 1
+    use_force_points: int = 1
 
     def on_activate(self, actor, *args, **kwargs):
         return True
 
 @dataclass
 @register_perk(210) # TODO: INERTIAL PROPERTY ADD CONSUME ADD ALLY
-class ForceProjection(ActivePerk):
+class ForceProjection(ForceActivePerk):
     cooldown: int = 1
+    use_force_points: int = 4
+    could_be_use_as_inertia: bool = True
 
     def on_activate(self, actor, *args, **kwargs):
         return True
 
 @dataclass
 @register_perk(211) # TODO: ADD CONSUME
-class ElectricJustice(ActivePerk):
+class ElectricJustice(ForceActivePerk):
     cooldown: int = 1
+    use_force_points: int = 3
 
     def on_activate(self, actor, *args, **kwargs):
         return True
 
 @dataclass
 @register_perk(212) # TODO: ADD CONSUME ADD ALLY
-class ForceDuplicate(ActivePerk):
+class ForceDuplicate(ForceActivePerk):
     cooldown: int = 1
+    use_force_points: int = 7
 
     def on_activate(self, actor, *args, **kwargs):
         return True
 
 @dataclass
 @register_perk(213) # TODO: ADD CONSUME
-class ForceHeal(ActivePerk):
+class ForceHeal(ForceActivePerk):
     cooldown: int = 3
+    use_force_points: int = 5
 
     def on_activate(self, actor, *args, **kwargs):
         return True
 
 @dataclass
 @register_perk(214)
-class ForceSpeed(ActivePerk):
+class ForceSpeed(ForceActivePerk):
     cooldown: int = 3
+    use_force_points: int = 3
 
     def on_activate(self, actor, *args, **kwargs):
         return True
@@ -1741,10 +1776,10 @@ class ForceSpeed(ActivePerk):
 @dataclass
 @register_perk(215) # TODO: Should change other perk
 class ReflectionMaster(PassiveOneTimePerk):
-    perks_required: list = field(default_factory=lambda: [ProtocolAttack])
-    def apply_once(self, actor): ...
+    perks_required: list = field(default_factory=lambda: [DefensiveStance])
 
-
+    def apply_once(self, actor):
+        ...
 
 
 @dataclass
@@ -1944,7 +1979,8 @@ class SureAim(AdditionalPerk, PassiveTriggeredPerk):
 class Sprinter(AdditionalPerk, PassiveOneTimePerk):
     points_cost: int = 5
     def apply_once(self, actor: "CharacterInstance") -> None:
-        ...
+        actor.mobility += 5
+        self.is_completed = True
 
 @dataclass
 @register_perk(238)
@@ -2390,7 +2426,9 @@ class ImpactShot(AdditionalPerk, ActivePerk):
 class StrongBody(AdditionalPerk, PassiveOneTimePerk):
     points_cost: int = 5
     def apply_once(self, actor: "CharacterInstance") -> None:
-        ...
+        actor.max_hp += 5
+        actor.hp += 5
+        self.is_completed = True
 
 @dataclass
 @register_perk(290)
@@ -2615,9 +2653,10 @@ class JediAdrenaline(AdditionalJediPerk, Adrenaline):
 
 @dataclass
 @register_perk(313)
-class Attraction(AdditionalJediPerk, ActivePerk):
+class Attraction(AdditionalJediPerk, ForceActivePerk):
     cooldown: int = 0
     points_cost: int = 15
+    use_force_points = 1
 
     def on_activate(self, actor, *args, **kwargs):
         return True
@@ -2629,8 +2668,9 @@ class JediMoves(AdditionalJediPerk, Parkour):
 
 @dataclass
 @register_perk(315)
-class BreakWeapon(AdditionalJediPerk, ActivePerk):
+class BreakWeapon(AdditionalJediPerk, ForceActivePerk):
     points_cost: int = 10
+    use_force_points = 1
 
     def on_activate(self, actor, *args, **kwargs):
         return True
@@ -2642,16 +2682,18 @@ class JediScenarioShield(AdditionalJediPerk, ScenarioShield):
 
 @dataclass
 @register_perk(317)
-class ForceBoost(AdditionalJediPerk, ActivePerk):
+class ForceBoost(AdditionalJediPerk, ForceActivePerk):
     points_cost: int = 20
+    use_force_points = 1
 
     def on_activate(self, actor, *args, **kwargs):
         return True
 
 @dataclass
 @register_perk(318)
-class ForceStabilize(AdditionalJediPerk, ActivePerk):
+class ForceStabilize(AdditionalJediPerk, ForceActivePerk):
     points_cost: int = 15
+    use_force_points = 1
 
     def on_activate(self, actor, *args, **kwargs):
         return True
@@ -2670,24 +2712,28 @@ class JediHiddenReserves(AdditionalJediPerk, HiddenReserves):
 @register_perk(321)
 class ForceUnity(AdditionalJediPerk, PassiveTriggeredPerk):
     points_cost: int = 15
+    is_activated: bool = True
 
-    def conditions_met(self, actor: "CharacterInstance", ctx: Optional[EventCtx]) -> bool:
+    def conditions_met(self, actor: "ForceUser", ctx: Optional[EventCtx]) -> bool:
         return True
 
-    def apply_effect(self, actor: "CharacterInstance", ctx: Optional[EventCtx]) -> None:
-        pass
+    def apply_effect(self, actor: "ForceUser", ctx: Optional[EventCtx]) -> None:
+        actor.max_force_points += 1
 
 @dataclass
 @register_perk(322)
 class Swordmaster(AdditionalJediPerk, PassiveOneTimePerk):
     points_cost: int = 10
     def apply_once(self, actor: "CharacterInstance") -> None:
-        ...
+        actor.main_weapon.base_acc += 10
+        actor.main_weapon.base_dices.append(Dice(4))
+        self.is_completed = True
 
 @dataclass
 @register_perk(323)
-class ForceJump(AdditionalJediPerk, ActivePerk):
+class ForceJump(AdditionalJediPerk, ForceActivePerk):
     points_cost: int = 10
+    use_force_points = 1
 
     def on_activate(self, actor, *args, **kwargs):
         return True
@@ -2699,8 +2745,9 @@ class JediLickingWoundsAdditional(AdditionalJediPerk, LickingWounds):
 
 @dataclass
 @register_perk(325)
-class ForceBind(AdditionalJediPerk, ActivePerk):
+class ForceBind(AdditionalJediPerk, ForceActivePerk):
     points_cost: int = 20
+    use_force_points = 2
 
     def on_activate(self, actor, *args, **kwargs):
         return True
@@ -2714,8 +2761,10 @@ class JediSprinter(AdditionalJediPerk, Sprinter):
 @register_perk(327)
 class ForceMaster(AdditionalJediPerk, PassiveOneTimePerk):
     points_cost: int = 25
-    def apply_once(self, actor: "CharacterInstance") -> None:
-        ...
+    def apply_once(self, actor: "ForceUser") -> None:
+        actor.max_force_points += 5
+        actor.restore_force_points()
+        self.is_completed = True
 
 @dataclass
 @register_perk(328)
@@ -2729,8 +2778,9 @@ class JediLayeredDefense(AdditionalJediPerk, LayeredDefense):
 
 @dataclass
 @register_perk(330)
-class StrikeFlurry(AdditionalJediPerk, ActivePerk):
+class StrikeFlurry(AdditionalJediPerk, ForceActivePerk):
     points_cost: int = 20
+    use_force_points = 1
 
     def on_activate(self, actor, *args, **kwargs):
         return True

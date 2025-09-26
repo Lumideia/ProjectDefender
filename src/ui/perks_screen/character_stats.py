@@ -4,7 +4,7 @@ from typing import Optional, List, Union
 
 import pygame
 
-from src.enteties.character_instance import CharacterInstance
+from src.enteties.character_instance import CharacterInstance, ForceUser
 from src.enteties.weapon_instance import FireArmWeaponInstance, MeleeWeaponInstance, ThrowingWeaponInstance
 from src.ui.theme import COLORS
 
@@ -177,6 +177,34 @@ class CharacterStatsPanel:
                  ]
             )
         )
+
+        if isinstance(self.character, ForceUser):
+            self.controls.append(
+                StatControl(
+                    "Сила",
+                    lambda: self.character.force_points,
+                    [
+                        StatButton(
+                            "-",
+                            lambda: setattr(
+                                self.character,
+                                "force_points",
+                                max(0, self.character.force_points - 1)
+                            )
+                        ),
+                        StatButton(
+                            "+",
+                            lambda: setattr(
+                                self.character,
+                                "force_points",
+                                min(self.character.max_force_points, self.character.force_points + 1)
+                            )
+                        ),
+                        StatButton("R", self.character.restore_force_points),
+                    ]
+                )
+            )
+
 
     def draw(self, screen: pygame.Surface):
         if not self.character:

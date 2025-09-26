@@ -20,6 +20,7 @@ class CharacterInstance:
     accuracy: int = field(init=False)
     observation: bool = False
     character: Character = field(default_factory=Character)
+    max_hp: int = field(init=False)
     hp: int = field(init=False)
     armour: int = field(init=False)
     main_weapon: WeaponInstance = field(default=None)
@@ -54,7 +55,8 @@ class CharacterInstance:
 
     def __post_init__(self):
         WORLD_BUS.register_actor(self)
-        self.hp = self.character.hp
+        self.max_hp = self.character.hp
+        self.hp = self.max_hp
         self.armour = self.character.armour
         self.mobility = self.character.movement
         self.dodge = self.character.dodge
@@ -82,6 +84,10 @@ class CharacterInstance:
     def activate_perk(self, perk: "Perk"):
         if perk.is_taken is not None:
             return
+
+        for req_perk in perk.perks_required:
+            if not any(isinstance(self_perk, req_perk) for self_perk in self.perks if self_perk.is_taken):
+                return
 
         perk.is_taken = True
         perk.on_gain(self)
@@ -127,16 +133,6 @@ class CharacterInstance:
     def tick_perks(self):
         for p in self.perks:
             p.tick()
-
-    def on_turn_start(self, turn_idx: int):
-        for p in self.perks:
-            if hasattr(p, "on_turn_start"):
-                p.on_turn_start(turn_idx)
-
-    def on_turn_end(self, turn_idx: int):
-        for p in self.perks:
-            if hasattr(p, "on_turn_end"):
-                p.on_turn_end(turn_idx)
 
     def set_main_weapon(self, weapon: "WeaponInstance"):
         if any(weapon.weapon.name == w.name for w in self.available_weapons):
@@ -311,6 +307,9 @@ class ShieldSoldier(CharacterInstance):
 
 @dataclass(eq=False)
 class ForceUser(CharacterInstance):
+    inertia: bool = False
+    max_force_points: int = 0
+    force_points: int = 0
     available_weapons =  [OTHER_WEAPONS[4]]
     available_side_weapons = [None]
     class_name: str = "Джедай"
@@ -321,6 +320,14 @@ class ForceUser(CharacterInstance):
         [208, 209, 210, 211],
         [212, 213, 214, 215],
     ])
+
+    def restore_force_points(self):
+        self.force_points = self.max_force_points
+
+    def notify(self, ev: Event, ctx):
+        if ev == Event.TURN_END:
+            self.inertia = False
+        super().notify(ev, ctx)
 
 CHARACTER_CLASSES = [
     Grenadier,

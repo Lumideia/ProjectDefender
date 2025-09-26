@@ -2,7 +2,7 @@ from collections import Counter
 
 import pygame
 
-from src.enteties.weapon_instance import create_weapon_instance
+from src.enteties.weapon_instance import create_weapon_instance, FireArmWeaponInstance, MeleeWeaponInstance
 from src.ui import runtime
 from src.ui.fonts_colors import BLACK, LIGHT_GRAY, DARK_GRAY, GREEN
 from src.constant.weapons import MAIN_WEAPONS, OTHER_WEAPONS
@@ -159,14 +159,9 @@ def draw_environment_controls():
 
 
 def compute_and_draw_effects():
-    draw_text("Введите дистанцию:", 550, 160)   # было 130
-    weap_input_box.rect.y = 155                 # было 125
-    weap_input_box.draw()
-    try:
-        dist = int(weap_input_box.text)
-    except (ValueError, TypeError):
-        return
+    dist = 0
     weapon = get_current_weapons()[selected_weapon_index]
+
     interference = Interference(half=half_interf_count, full=full_interf_count)
     if selected_cover == COVER_FULL:
         cover_obj = Cover(is_full=True)
@@ -180,6 +175,16 @@ def compute_and_draw_effects():
         pos_enum = Position.LOWER
     else:
         pos_enum = Position.EQUAL
+
+    if not isinstance(weapon, MeleeWeaponInstance):
+        draw_text("Введите дистанцию:", 550, 160)  # было 130
+        weap_input_box.rect.y = 155  # было 125
+        weap_input_box.draw()
+        try:
+            dist = int(weap_input_box.text)
+        except (ValueError, TypeError):
+            return
+
     try:
         calc = LegacyCalculation(
             weapon=weapon,
@@ -190,6 +195,7 @@ def compute_and_draw_effects():
         )
     except Exception:
         return
+
     base_accuracy = calc.base_acc + calc.distance_acc
     final_accuracy = calc.calculate_accuracy()
     acc_penalty = base_accuracy - final_accuracy

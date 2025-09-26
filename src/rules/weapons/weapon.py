@@ -1,62 +1,30 @@
 from abc import ABC
-from typing import List
+from dataclasses import dataclass
+from typing import List, Optional
 
 from src.rules.dice import Dice
 from src.rules.weapons.modifiers import DistanceModifier
 
 
+
+@dataclass
 class Weapon(ABC):
-    def __init__(
-            self,
-            name: str = '',
-            base_dices: List[Dice] = None,
-            cr_dices: List[Dice] = None,
-            movement_effects: int = 0,
-            armor_destroying: int = 0,
-            is_move_attack_allowed: bool = False,
-            base_atk: int = 0,
-            distance_rules: List[DistanceModifier] = None,
-    ):
-        self.name = name
-        self.base_dices = base_dices
-        self.cr_dices = cr_dices
-        self.movement_effects = movement_effects
-        self.armor_destroying = armor_destroying
-        self.is_move_attack_allowed = is_move_attack_allowed
-        self.base_atk = base_atk
+    name: str = ''
+    base_dices: List[Dice] = None
+    cr_dices: List[Dice] = None
+    movement_effects: int = 0
+    armor_destroying: int = 0
+    is_move_attack_allowed: bool = False
+    base_atk: int = 0
+    base_acc: int = 85
+    base_cr: int = 0
+    distance_rules: Optional[List[DistanceModifier]] = None
+    def post__init__(self):
         self.distance_rules = sorted(
-            distance_rules,
+            self.distance_rules,
             key=lambda r: r.min_distance,
             reverse=True
-        ) if distance_rules else None
-
-
-class FirearmWeapon(Weapon):
-    def __init__(
-            self,
-            name: str = '',
-            base_dices: List[Dice] = None,
-            cr_dices: List[Dice] = None,
-            movement_effects: int = 0,
-            armor_destroying: int = 0,
-            is_move_attack_allowed: bool = False,
-            base_atk: int = 0,
-            mag_size: int = 20,
-            distance_rules: List[DistanceModifier] = None,
-            reload_cost: int = 1,
-            is_heavy: bool = False,
-            is_stun_mode_available: bool = False,
-    ):
-        super().__init__(
-            name, base_dices, cr_dices, movement_effects, armor_destroying, is_move_attack_allowed, base_atk,
-            distance_rules
-        )
-
-        self.mag_size = mag_size
-        self.reload_cost = reload_cost
-        self.is_heavy = is_heavy
-        self.is_stun_mode_available = is_stun_mode_available
-
+        ) if self.distance_rules else None
 
     def get_distance_rule(self, distance):
         for rule in self.distance_rules:
@@ -65,39 +33,19 @@ class FirearmWeapon(Weapon):
         raise Exception('Invalid distance. Probably wrong weapon setting')
 
 
-class ThrowingWeapon(Weapon):
-    def __init__(
-            self,
-            name: str = '',
-            base_dices: List[Dice] = None,
-            cr_dices: List[Dice] = None,
-            movement_effects: int = 0,
-            armor_destroying: int = 0,
-            is_move_attack_allowed: bool = False,
-            base_atk: int = 0,
-            distance_rules: List[DistanceModifier] = None,
-            max_distance: int = 30,
-            base_count: int = 0,
-    ):
-        super().__init__(
-            name, base_dices, cr_dices, movement_effects, armor_destroying, is_move_attack_allowed, base_atk,
-            distance_rules
-        )
-        self.max_distance = max_distance
-        self.base_count = base_count
+@dataclass
+class FirearmWeapon(Weapon):
+    mag_size: int = 20
+    reload_cost: int = 1
+    is_heavy: bool = False
+    is_stun_mode_available: bool = False
 
+
+@dataclass
+class ThrowingWeapon(Weapon):
+    max_distance: int = 30
+    base_count: int = 0
+
+@dataclass
 class MeleeWeapon(Weapon):
-    def __init__(
-            self,
-            name: str = '',
-            base_dices: List[Dice] = None,
-            cr_dices: List[Dice] = None,
-            movement_effects: int = 0,
-            armor_destroying: int = 0,
-            base_atk: int = 0,
-            distance_rules: List[DistanceModifier] = None,
-    ):
-        super().__init__(
-            name, base_dices, cr_dices, movement_effects, armor_destroying,
-            is_move_attack_allowed=True, base_atk=base_atk, distance_rules=distance_rules
-        )
+    distance_rules: Optional[List[DistanceModifier]] = None
