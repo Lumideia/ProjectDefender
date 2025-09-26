@@ -1,8 +1,9 @@
 from abc import ABC
 from dataclasses import dataclass, field
-from typing import List
+from typing import List, Optional
 
 from src.rules.dice import Dice
+from src.rules.weapons.modifiers import DistanceModifier
 from src.rules.weapons.weapon import Weapon, ThrowingWeapon, MeleeWeapon, FirearmWeapon
 
 @dataclass
@@ -17,6 +18,7 @@ class WeaponInstance(ABC):
     is_move_attack_allowed: bool = field(init=False)
     base_atk: int = field(init=False)
     base_cr: int = field(init=False)
+    bonus_dices: Optional[List[Dice]] = field(default=None)
 
     def __post_init__(self):
         self.name = self.weapon.name
@@ -28,6 +30,7 @@ class WeaponInstance(ABC):
         self.base_atk = self.weapon.base_atk
         self.base_acc = self.weapon.base_acc
         self.base_cr = self.weapon.base_cr
+        self.bonus_dices = self.weapon.bonus_dices
 
 
 @dataclass

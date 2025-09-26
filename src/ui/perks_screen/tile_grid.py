@@ -7,6 +7,7 @@ from src.rules.perks.perk import Perk
 from src.rules.perks.registry import create_perk
 
 from src.ui.theme import COLORS
+from src.ui.weapons_screen import pos_radio_rects
 
 if TYPE_CHECKING:
     from src.ui.perks_screen.perk_screen import PerkScreen

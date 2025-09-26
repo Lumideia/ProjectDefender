@@ -14,7 +14,7 @@ from src.rules.perks.perk import (
 from src.rules.perks.registry import register_perk
 
 if TYPE_CHECKING:
-    from src.enteties.character_instance import CharacterInstance, ForceUser
+    from src.enteties.character_instance import CharacterInstance, ForceUser, ElectricGuard
 
 
 @dataclass
@@ -2784,3 +2784,187 @@ class StrikeFlurry(AdditionalJediPerk, ForceActivePerk):
 
     def on_activate(self, actor, *args, **kwargs):
         return True
+
+@dataclass
+@register_perk(331)
+class ElectrostaffStrike(ActivePerk):
+    cooldown: int = 1
+
+    def on_activate(self, actor, *args, **kwargs):
+        return True
+
+@dataclass
+@register_perk(332)
+class WideSwing(ActivePerk):
+    cooldown: int = 1
+
+    def on_activate(self, actor, *args, **kwargs):
+        return True
+
+@dataclass
+@register_perk(333)
+class EnergyFlow(PassiveTriggeredPerk):
+    is_activated: bool = True
+    cooldown: int = 0
+
+    def conditions_met(self, actor: "CharacterInstance", ctx: Optional[EventCtx]) -> bool:
+        return True
+
+    def apply_effect(self, actor: "ElectricGuard", ctx: Optional[EventCtx]) -> None:
+        actor.add_overload()
+
+@dataclass
+@register_perk(334)
+class LightweightFighter(ActivePerk):
+    cooldown: int = 3
+
+    def on_gain(self, actor: "CharacterInstance") -> None:
+        actor.mobility += 10
+        actor.dodge += 15
+
+    def on_activate(self, actor, *args, **kwargs):
+        return True
+
+@dataclass
+@register_perk(335)
+class StaffMastery(PassiveTriggeredPerk):
+    is_activated: bool = True
+    cooldown: int = 1
+
+    def conditions_met(self, actor: "CharacterInstance", ctx: Optional[EventCtx]) -> bool:
+        return True
+
+    def apply_effect(self, actor: "ElectricGuard", ctx: Optional[EventCtx]) -> None:
+        pass
+
+@dataclass
+@register_perk(336)
+class PiercingSpear(ActivePerk):
+    def on_activate(self, actor, *args, **kwargs):
+        return True
+
+@dataclass
+@register_perk(337)
+class Parry(PassiveTriggeredPerk):
+    def conditions_met(self, actor: "CharacterInstance", ctx: Optional[EventCtx]) -> bool:
+        return True
+
+    def apply_effect(self, actor: "ElectricGuard", ctx: Optional[EventCtx]) -> None:
+        pass
+
+@dataclass
+@register_perk(338)
+class OverloadSurge(ActivePerk):
+    cooldown: int = 1
+
+    def ready(self) -> bool:
+        if self.owner.overload_points < 2:
+            return False
+        return super().ready()
+
+    def on_activate(self, actor: "ElectricGuard", *args, **kwargs):
+        actor.use_overload(2)
+        return True
+
+@dataclass
+@register_perk(339)
+class ModifiedGear(PassiveTriggeredPerk):
+    def conditions_met(self, actor: "CharacterInstance", ctx: Optional[EventCtx]) -> bool:
+        return True
+
+    def apply_effect(self, actor: "ElectricGuard", ctx: Optional[EventCtx]) -> None:
+        pass
+
+@dataclass
+@register_perk(340)
+class BattleReady(PassiveTriggeredPerk):
+    def conditions_met(self, actor: "CharacterInstance", ctx: Optional[EventCtx]) -> bool:
+        return True
+
+    def apply_effect(self, actor: "ElectricGuard", ctx: Optional[EventCtx]) -> None:
+        pass
+
+@dataclass
+@register_perk(341)
+class FirstStrike(PassiveTriggeredPerk):
+    def conditions_met(self, actor: "CharacterInstance", ctx: Optional[EventCtx]) -> bool:
+        return True
+
+    def apply_effect(self, actor: "ElectricGuard", ctx: Optional[EventCtx]) -> None:
+        pass
+
+@dataclass
+@register_perk(342)
+class ControlZone(PassiveTriggeredPerk):
+    def conditions_met(self, actor: "CharacterInstance", ctx: Optional[EventCtx]) -> bool:
+        return True
+
+    def apply_effect(self, actor: "ElectricGuard", ctx: Optional[EventCtx]) -> None:
+        pass
+
+@dataclass
+@register_perk(343)
+class GetOverHere(ActivePerk):
+
+    def on_activate(self, actor: "ElectricGuard", *args, **kwargs):
+        return True
+
+@dataclass
+@register_perk(344)
+class StaffGrab(ActivePerk):
+    cooldown: int = 1
+
+    def on_activate(self, actor: "ElectricGuard", *args, **kwargs):
+        return True
+
+@dataclass
+@register_perk(345)
+class LightningDash(ActivePerk):
+    cooldown: int = 3
+
+    def on_activate(self, actor: "ElectricGuard", *args, **kwargs):
+        return True
+
+@dataclass
+@register_perk(346)
+class JuryRiggedShieldGenerator(ActivePerk):
+    def on_activate(self, actor: "ElectricGuard", *args, **kwargs):
+        actor.use_overload()
+        return True
+
+@dataclass
+@register_perk(347)
+class Reaper(ActivePerk):
+    cooldown: int = 4
+
+    def on_activate(self, actor: "ElectricGuard", *args, **kwargs):
+        return True
+
+@dataclass
+@register_perk(348)
+class Thunderwave(PassiveTriggeredPerk):
+    def conditions_met(self, actor: "CharacterInstance", ctx: Optional[EventCtx]) -> bool:
+        return True
+
+    def apply_effect(self, actor: "ElectricGuard", ctx: Optional[EventCtx]) -> None:
+        pass
+
+@dataclass
+@register_perk(349)
+class AllOutPush(ActivePerk):
+    cooldown: int = 2
+
+    def on_activate(self, actor: "ElectricGuard", *args, **kwargs):
+        return True
+
+@dataclass
+@register_perk(350)
+class Stormbreaker(ActivePerk):
+    def on_activate(self, actor: "ElectricGuard", *args, **kwargs):
+        actor.use_overload(5)
+        return True
+
+    def ready(self) -> bool:
+        if self.owner.overload_points < 5:
+            return False
+        return super().ready()

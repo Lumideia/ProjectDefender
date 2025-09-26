@@ -124,7 +124,10 @@ def draw_weapon_stats(weapon):
     y = 180
     line_h = 30
     draw_text("Характеристики оружия:", 50, y); y += line_h
-    draw_text(f"Урон: {format_dice(getattr(weapon, 'base_dices', None))}", 70, y); y += line_h
+    base = getattr(weapon, 'base_dices', []) or []
+    bonus = getattr(weapon, 'bonus_dices', []) or []
+    dices = base + bonus
+    draw_text(f"Урон: {format_dice(dices)}", 70, y); y += line_h
     draw_text(f"Крит: {format_dice(getattr(weapon, 'cr_dices', None))}", 70, y); y += line_h
     draw_text(f"Базовый урон (без кубов): {getattr(weapon, 'base_atk', 0)}", 70, y); y += line_h
     draw_text(f"Бронебойность: {getattr(weapon, 'armor_destroying', 0)}", 70, y); y += line_h

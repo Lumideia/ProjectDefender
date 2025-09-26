@@ -6,6 +6,7 @@ from src.enteties.weapon_instance import WeaponInstance
 from src.rules.characters.character import Character
 from src.rules.consumables.Inventory import Inventory
 from src.rules.consumables.consumable import Consumable, DEFAULT_CONSUMABLES
+from src.rules.dice import Dice
 from src.rules.effects.effect import Effect
 from src.rules.perks.perk import Perk
 from src.rules.events.types import Event
@@ -329,6 +330,40 @@ class ForceUser(CharacterInstance):
             self.inertia = False
         super().notify(ev, ctx)
 
+@dataclass(eq=False)
+class ElectricGuard(CharacterInstance):
+    max_overload: int = 5
+    overload_points: int = 0
+    available_weapons = [OTHER_WEAPONS[6]]
+    available_side_weapons = [None]
+    class_name: str = "Электростраж"
+    perk_order: List[List[int]] = field(default_factory=lambda: [
+        [331, 332, 59, 333, 334],
+        [335, 336, 337, 338],
+        [339, 340, 341, 342],
+        [343, 344, 345, 346],
+        [347, 348, 349, 350],
+
+    ])
+
+    def restore_overload(self):
+        self.overload_points = self.max_overload
+        self.recalculate_bonus()
+
+    def add_overload(self):
+        if self.overload_points < self.max_overload:
+            self.overload_points += 1
+            self.recalculate_bonus()
+
+    def use_overload(self, points: int = 1):
+        if self.overload_points >= points:
+            self.overload_points -= points
+            self.recalculate_bonus()
+
+    def recalculate_bonus(self):
+        bonus = [Dice(4) for _ in range(self.overload_points)]
+        self.main_weapon.bonus_dices = bonus
+
 CHARACTER_CLASSES = [
     Grenadier,
     MachineGunner,
@@ -342,4 +377,5 @@ CHARACTER_CLASSES = [
     Medic,
     ShieldSoldier,
     ForceUser,
+    ElectricGuard
 ]

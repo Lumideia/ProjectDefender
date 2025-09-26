@@ -167,6 +167,15 @@ OTHER_WEAPONS = [
         movement_effects=0,
         armor_destroying=0,
         base_count=2
+    ),
+    MeleeWeapon(
+        name='Электропосох',
+        base_dices=[Dice(8), Dice(8)],
+        base_atk=5,
+        cr_dices=[Dice(8)],
+        base_cr=15,
+        base_acc=90,
+        bonus_dices=[]
     )
 ]
 

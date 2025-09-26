@@ -12,12 +12,14 @@ class Weapon(ABC):
     name: str = ''
     base_dices: List[Dice] = None
     cr_dices: List[Dice] = None
+    bonus_dices: [List[Dice]] = None
     movement_effects: int = 0
     armor_destroying: int = 0
     is_move_attack_allowed: bool = False
     base_atk: int = 0
     base_acc: int = 85
     base_cr: int = 0
+
     distance_rules: Optional[List[DistanceModifier]] = None
     def post__init__(self):
         self.distance_rules = sorted(

@@ -4,7 +4,7 @@ from typing import Optional, List, Union
 
 import pygame
 
-from src.enteties.character_instance import CharacterInstance, ForceUser
+from src.enteties.character_instance import CharacterInstance, ForceUser, ElectricGuard
 from src.enteties.weapon_instance import FireArmWeaponInstance, MeleeWeaponInstance, ThrowingWeaponInstance
 from src.ui.theme import COLORS
 
@@ -201,6 +201,18 @@ class CharacterStatsPanel:
                             )
                         ),
                         StatButton("R", self.character.restore_force_points),
+                    ]
+                )
+            )
+        if isinstance(self.character, ElectricGuard):
+            self.controls.append(
+                StatControl(
+                    "Перегрузка",
+                    lambda: self.character.overload_points,
+                    [
+                        StatButton("-",self.character.use_overload),
+                        StatButton("+",self.character.add_overload),
+                        StatButton("R", self.character.restore_overload),
                     ]
                 )
             )
