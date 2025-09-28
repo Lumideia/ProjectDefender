@@ -2,6 +2,7 @@
 from dataclasses import dataclass, field
 from typing import Optional, TYPE_CHECKING, List
 
+from src.enteties.weapon_instance import MachineGunWeaponInstance
 from src.rules.consumables.InventoryCell import GrenadeOnlyCell, TypedInventoryCell
 from src.rules.consumables.consumable import Smoke, Grenade, ThermalDetonator, Flashing, BaktaSpray, EnergeticWeb, \
     EMIGrenade, GasGrenade, ImpulseGrenade, Cryogen, DamageGrenade, NonDamageGrenade, Bandage
@@ -9,7 +10,7 @@ from src.rules.dice import Dice
 from src.rules.events.types import EventCtx
 from src.rules.perks.perk import (
     PassiveOneTimePerk, PassiveTriggeredPerk, ActivePerk, AuraPerk, AdditionalPerk, AdditionalJediPerk, ForceActivePerk,
-    ForcePassiveTriggeredPerk
+    ForcePassiveTriggeredPerk, BulletSpendingPerk
 )
 from src.rules.perks.registry import register_perk
 
@@ -86,7 +87,11 @@ class TandemWarheads(PassiveOneTimePerk):
 @dataclass
 @register_perk(12)
 class ArmorPiercer(PassiveOneTimePerk):
-    def apply_once(self, actor): ...
+    def apply_once(self, actor: "CharacterInstance"):
+        actor.main_weapon.armor_destroying += 1
+        if isinstance(actor.main_weapon, MachineGunWeaponInstance):
+            actor.main_weapon.critical_armor_destroying.append(Dice(4))
+        self.is_completed = True
 
 @dataclass
 @register_perk(13)
@@ -716,7 +721,8 @@ class CreateGrenade(ActivePerk):
 
 @dataclass
 @register_perk(91) # TODO: Weapon
-class Suppression(ActivePerk):
+class Suppression(BulletSpendingPerk):
+    ammo_using: int = 2
     cooldown: int = 1
 
     def on_activate(self, actor, *args, **kwargs) -> bool:
@@ -725,7 +731,8 @@ class Suppression(ActivePerk):
 
 @dataclass
 @register_perk(92) # TODO: Weapon
-class WideSuppression(ActivePerk):
+class WideSuppression(BulletSpendingPerk):
+    ammo_using: int = 4
     cooldown: int = 1
 
     def on_activate(self, actor, *args, **kwargs) -> bool:
@@ -739,48 +746,54 @@ class DangerZone(PassiveOneTimePerk):
 
 @dataclass
 @register_perk(94) # TODO: Weapon
-class ChainWeight(ActivePerk):
+class ChainWeight(BulletSpendingPerk):
     cooldown: int = 1
+    ammo_using: int = 3
 
     def on_activate(self, actor, *args, **kwargs) -> bool:
         return True
 
 @dataclass
 @register_perk(95) # TODO: Weapon
-class Rupture(ActivePerk):
+class Rupture(BulletSpendingPerk):
     cooldown: int = 2
+    ammo_using: int = 2
 
     def on_activate(self, actor, *args, **kwargs) -> bool:
         return True
 
 @dataclass
 @register_perk(96) # TODO: Weapon
-class RapidFire(ActivePerk):
+class RapidFire(BulletSpendingPerk):
     cooldown: int = 3
+    ammo_using: int = 2
 
     def on_activate(self, actor, *args, **kwargs) -> bool:
         return True
 
 @dataclass
 @register_perk(97) # TODO: Weapon
-class TripleShot(ActivePerk):
+class TripleShot(BulletSpendingPerk):
     cooldown: int = 3
+    ammo_using: int = 3
 
     def on_activate(self, actor, *args, **kwargs) -> bool:
         return True
 
 @dataclass
 @register_perk(98) # TODO: Weapon
-class SurefireShot(ActivePerk):
+class SurefireShot(BulletSpendingPerk):
     cooldown: int = 2
+    ammo_using: int = 3
 
     def on_activate(self, actor, *args, **kwargs) -> bool:
         return True
 
 @dataclass
 @register_perk(99) # TODO: Weapon
-class MassiveFire(ActivePerk):
+class MassiveFire(BulletSpendingPerk):
     cooldown: int = 3
+    ammo_using: int = 4
 
     def on_activate(self, actor, *args, **kwargs) -> bool:
         return True

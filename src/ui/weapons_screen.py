@@ -1,8 +1,7 @@
-from collections import Counter
-
 import pygame
 
-from src.enteties.weapon_instance import create_weapon_instance, FireArmWeaponInstance, MeleeWeaponInstance
+from src.enteties.weapon_instance import create_weapon_instance, MeleeWeaponInstance
+from src.rules.dice import format_dice
 from src.ui import runtime
 from src.ui.fonts_colors import BLACK, LIGHT_GRAY, DARK_GRAY, GREEN
 from src.constant.weapons import MAIN_WEAPONS, OTHER_WEAPONS
@@ -130,9 +129,14 @@ def draw_weapon_stats(weapon):
     draw_text(f"Урон: {format_dice(dices)}", 70, y); y += line_h
     draw_text(f"Крит: {format_dice(getattr(weapon, 'cr_dices', None))}", 70, y); y += line_h
     draw_text(f"Базовый урон (без кубов): {getattr(weapon, 'base_atk', 0)}", 70, y); y += line_h
-    draw_text(f"Бронебойность: {getattr(weapon, 'armor_destroying', 0)}", 70, y); y += line_h
+    draw_text(f"Игнор брони: {getattr(weapon, 'armor_ignorance', 0)}", 70, y); y += line_h
+    draw_text(f"Разрыв брони: {getattr(weapon, 'armor_destroying', 0)}", 70, y); y += line_h
     if hasattr(weapon, 'is_move_attack_allowed'):
         draw_text(f"Атака в движении: {'Да' if weapon.is_move_attack_allowed else 'Нет'}", 70, y); y += line_h
+
+    for row in weapon.additional_info():
+        draw_text(row, 70, y); y += line_h
+
     try:
         from src.rules.weapons.weapon import FirearmWeapon
         if isinstance(weapon, FirearmWeapon):
@@ -247,11 +251,6 @@ def get_current_weapons():
 def draw_text(text, x, y, *, color=BLACK, font=runtime.fonts["main"]):
     label = font.render(text, True, color)
     runtime.screen.blit(label, (x, y))
-
-
-def format_dice(dice_list):
-    counter = Counter([d.edges for d in dice_list]) if dice_list else {}
-    return " + ".join([f"{count}d{sides}" if count > 1 else f"d{sides}" for sides, count in counter.items()]) or "—"
 
 
 def draw_count_selector(x, y, label, count):

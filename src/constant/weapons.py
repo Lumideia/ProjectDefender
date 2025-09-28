@@ -1,4 +1,4 @@
-from src.rules.weapons.weapon import FirearmWeapon, MeleeWeapon, ThrowingWeapon
+from src.rules.weapons.weapon import FirearmWeapon, MeleeWeapon, ThrowingWeapon, MachineGun
 from src.rules.weapons.modifiers import DistanceModifier
 from src.rules.dice import Dice
 
@@ -74,7 +74,7 @@ FirearmWeapon(
             DistanceModifier(60, accuracy_buff=-15, distance_step=10),
         ]
     ),
-    FirearmWeapon(
+    MachineGun(
         name="Z6",
         base_atk=3,
         base_dices=[Dice(6), Dice(6), Dice(6)],

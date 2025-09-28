@@ -156,7 +156,7 @@ class ActivePerk(Perk):
 @dataclass
 class BulletSpendingPerk(ActivePerk):
     ammo_using: int = 0
-    use_main_weapon = True
+    use_main_weapon: bool = True
 
     def could_be_activated(  # TODO rewrite to ready
             self, actor: "CharacterInstance", target: Optional["CharacterInstance"] = None, *args, **kwargs
@@ -167,13 +167,24 @@ class BulletSpendingPerk(ActivePerk):
                 return False
         return super().could_be_activated(actor, *args, **kwargs)
 
-    def on_activate(self, actor, *args, **kwargs) -> bool:
+    def use_ammo(self, actor: "CharacterInstance", bullets):
         weapon = actor.main_weapon if self.use_main_weapon else actor.side_weapon
-        weapon.current_ammo -= self.ammo_using
-        ...
+        if not isinstance(weapon, FireArmWeaponInstance):
+            raise Exception('Wrong weapon type')
+
+        weapon.shoot(bullets=bullets)
+
+
+    def try_trigger(self, actor: "CharacterInstance", *args, **kwargs) -> bool:
+        if super().try_trigger(actor, *args, **kwargs):
+            self.use_ammo(actor, kwargs.get('ammo_using', self.ammo_using))
+
+
+    @abstractmethod
+    def on_activate(self, actor, *args, **kwargs) -> bool:
         return True
 
-class SpecialSpendingPerk(ActivePerk):
+class SpecialSpendingPerk(ActivePerk): # TODO: Review if it needs to be generalized
     consumable_using: int = 0
     use_main_weapon = True
 

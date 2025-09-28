@@ -1,18 +1,19 @@
 from abc import ABC
 from dataclasses import dataclass, field
-from typing import List, Optional
+from typing import List, Optional, Union
 
-from src.rules.dice import Dice
+from src.rules.dice import Dice, format_dice
 from src.rules.weapons.modifiers import DistanceModifier
-from src.rules.weapons.weapon import Weapon, ThrowingWeapon, MeleeWeapon, FirearmWeapon
+from src.rules.weapons.weapon import Weapon, ThrowingWeapon, MeleeWeapon, FirearmWeapon, MachineGun
+
 
 @dataclass
 class WeaponInstance(ABC):
     base_acc: int = field(init=False)
-    current_ammo: int = field(init=False, default=0)
+    current_ammo: int = field(init=False)
     weapon: Weapon
-    base_dices = List[Dice]
-    cr_dices = List[Dice]
+    base_dices: List[Dice] = field(init=False)
+    cr_dices: List[Dice] = field(init=False)
     movement_effects: int = field(init=False)
     armor_destroying: int = field(init=False)
     is_move_attack_allowed: bool = field(init=False)
@@ -31,6 +32,9 @@ class WeaponInstance(ABC):
         self.base_acc = self.weapon.base_acc
         self.base_cr = self.weapon.base_cr
         self.bonus_dices = self.weapon.bonus_dices
+
+    def additional_info(self) -> List[str]:
+        return []
 
 
 @dataclass
@@ -83,10 +87,27 @@ class MeleeWeaponInstance(WeaponInstance):
     weapon: MeleeWeapon
 
 
-def create_weapon_instance(weapon: Weapon) -> WeaponInstance:
+class MachineGunWeaponInstance(FireArmWeaponInstance):
+    weapon: MachineGun
+
+    def __post_init__(self) -> None:
+        super().__post_init__()
+        self.critical_armor_destroying = self.weapon.critical_armor_destroying
+
+    def additional_info(self) -> List[str]:
+        if self.critical_armor_destroying:
+            return [f"Разрыв брони при крите: {format_dice(self.critical_armor_destroying)}"]
+        return []
+
+def create_weapon_instance(weapon: Weapon) -> Union[
+    MeleeWeaponInstance, FireArmWeaponInstance, ThrowingWeaponInstance, None
+]:
     if isinstance(weapon, FirearmWeapon):
+        if isinstance(weapon, MachineGun):
+            return MachineGunWeaponInstance(weapon=weapon)
         return FireArmWeaponInstance(weapon=weapon)
     elif isinstance(weapon, ThrowingWeapon):
         return ThrowingWeaponInstance(weapon=weapon)
     elif isinstance(weapon, MeleeWeapon):
         return MeleeWeaponInstance(weapon=weapon)
+    return None

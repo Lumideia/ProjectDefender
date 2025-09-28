@@ -1,5 +1,5 @@
 from abc import ABC
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import List, Optional
 
 from src.rules.dice import Dice
@@ -14,6 +14,7 @@ class Weapon(ABC):
     cr_dices: List[Dice] = None
     bonus_dices: [List[Dice]] = None
     movement_effects: int = 0
+    armor_ignorance: int = 0
     armor_destroying: int = 0
     is_move_attack_allowed: bool = False
     base_atk: int = 0
@@ -42,6 +43,11 @@ class FirearmWeapon(Weapon):
     is_heavy: bool = False
     is_stun_mode_available: bool = False
 
+@dataclass
+class MachineGun(FirearmWeapon):
+    is_heavy: bool = True
+    is_stun_mode_available: bool = True
+    critical_armor_destroying: Optional[List[Dice]] = field(default_factory=list)
 
 @dataclass
 class ThrowingWeapon(Weapon):
