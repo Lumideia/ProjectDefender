@@ -151,14 +151,14 @@ class CharacterStatsPanel:
                     )
                 )
             elif isinstance(self.character.side_weapon, ThrowingWeaponInstance):
-                wpn = self.character.side_weapon
+                side_wpn = self.character.side_weapon
                 self.controls.append(
                     StatControl(
                         "Кол-во",
-                        lambda: wpn.count,
+                        lambda: side_wpn.count,
                         [
-                            StatButton("-", wpn.throw),  # например уменьшить на 1
-                            StatButton("+", wpn.pick_up),
+                            StatButton("-", side_wpn.throw),  # например уменьшить на 1
+                            StatButton("+", side_wpn.pick_up),
                         ]
                     )
                 )

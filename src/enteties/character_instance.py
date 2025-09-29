@@ -29,6 +29,7 @@ class CharacterInstance:
     perk_order: List[List[int]] = field(default_factory=list)
     inventory: Inventory = field(default_factory=Inventory)
     available_consumables: List[Type[Consumable]] = field(default_factory=lambda: DEFAULT_CONSUMABLES)
+    half_cover_is_full_cover: bool = field(default=False)
     available_weapons = list()
     available_side_weapons = list()
 
@@ -62,6 +63,8 @@ class CharacterInstance:
         self.mobility = self.character.movement
         self.dodge = self.character.dodge
         self.accuracy = self.character.accuracy
+        self.crit_buff = self.character.crit_buff
+        self.ablative = self.character.ablative
         self.main_weapon = None
 
     def creation_completed(self):
@@ -192,7 +195,7 @@ class FlyingSoldier(CharacterInstance):
 @dataclass(eq=False)
 class Officer(CharacterInstance):
     available_weapons =  [MAIN_WEAPONS[4]]
-    available_side_weapons = [None]
+    available_side_weapons = [OTHER_WEAPONS[7]]
     class_name: str = "Офицер"
     perk_order: List[List[int]] = field(default_factory=lambda: [
         [25, 26, 110, 109, 111],

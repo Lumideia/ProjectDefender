@@ -91,7 +91,7 @@ FirearmWeapon(
     FirearmWeapon(
         name="Огнестрел 773",
         base_atk=5,
-        base_dices=[Dice(4), Dice(4)],
+        base_dices=[Dice(6), Dice(6), Dice(6)],
         cr_dices=[Dice(10)],
         movement_effects=0,
         armor_destroying=0,
@@ -109,6 +109,7 @@ FirearmWeapon(
     ),
 ]
 
+
 OTHER_WEAPONS = [
     FirearmWeapon(
         name='УЗЧ',
@@ -119,7 +120,7 @@ OTHER_WEAPONS = [
             DistanceModifier(15, accuracy_buff=-20, damage_mult=2 / 3),
             DistanceModifier(30, accuracy_buff=-40, damage_mult=1 / 3, distance_step=20)
         ],
-        mag_size=4,
+        mag_size=2,
         is_heavy=False
     ),
     MeleeWeapon(
@@ -176,9 +177,15 @@ OTHER_WEAPONS = [
         base_cr=15,
         base_acc=90,
         bonus_dices=[]
+    ),
+    MeleeWeapon(
+        name='DC-17 (удар)',
+        base_dices=[Dice(8)],
+        base_cr=20,
+        cr_dices=[Dice(4)],
+        base_acc=80
     )
 ]
-
 MAIN_WEAPONS_DICT = {weapon.name: weapon for weapon in MAIN_WEAPONS}
 
 OTHER_WEAPONS_DICT = {weapon.name: weapon for weapon in OTHER_WEAPONS}

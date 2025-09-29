@@ -199,6 +199,7 @@ def compute_and_draw_effects():
             relative_position=pos_enum,
             cover=cover_obj,
             interference=interference,
+            character=selected_character,
         )
     except Exception:
         return
@@ -214,6 +215,8 @@ def compute_and_draw_effects():
     draw_text(f"Итоговая точность: {final_accuracy}%", 570, 250)
     draw_text(f"Крит. шанс: {cr}%", 570, 270)
     draw_text(f"Множитель урона: ×{round(dmg_mult, 2)}", 570, 290)
+    if selected_character and selected_character.crit_buff:
+        draw_text(f"Множитель крит. урона: {selected_character.crit_buff}%", 570, 310)
 
 def handle_event(event):
     handle_events_weapons(event)
@@ -227,6 +230,7 @@ CATEGORY_OTHER = 'other'
 selected_category = CATEGORY_MAIN
 custom_weapons: list = None
 selected_weapon_index = 0
+selected_character = None
 weap_input_box = InputBox(780, 125, 80, 32)
 full_interf_count = 0
 half_interf_count = 0

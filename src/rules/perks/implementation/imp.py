@@ -1,8 +1,9 @@
 # perks_generated.py
+from copy import copy
 from dataclasses import dataclass, field
 from typing import Optional, TYPE_CHECKING, List
 
-from src.enteties.weapon_instance import MachineGunWeaponInstance
+from src.enteties.weapon_instance import MachineGunWeaponInstance, FireArmWeaponInstance
 from src.rules.consumables.InventoryCell import GrenadeOnlyCell, TypedInventoryCell
 from src.rules.consumables.consumable import Smoke, Grenade, ThermalDetonator, Flashing, BaktaSpray, EnergeticWeb, \
     EMIGrenade, GasGrenade, ImpulseGrenade, Cryogen, DamageGrenade, NonDamageGrenade, Bandage
@@ -13,6 +14,7 @@ from src.rules.perks.perk import (
     ForcePassiveTriggeredPerk, BulletSpendingPerk
 )
 from src.rules.perks.registry import register_perk
+from src.rules.weapons.modifiers import DistanceModifier
 
 if TYPE_CHECKING:
     from src.enteties.character_instance import CharacterInstance, ForceUser, ElectricGuard
@@ -169,8 +171,12 @@ class PistolMaster(PassiveOneTimePerk):
 
 @dataclass
 @register_perk(27)
-class CombatHardened(PassiveOneTimePerk):
-    def apply_once(self, actor): ...
+class CombatHardened(PassiveOneTimePerk): # TODO: Add random health
+    def apply_once(self, actor):
+        actor.mobility += 5
+        actor.dodge += 5
+        actor.accuracy += 5
+        self.is_completed = True
 
 @dataclass
 @register_perk(28)
@@ -192,17 +198,27 @@ class PointBlankShot(PassiveOneTimePerk):
 @dataclass
 @register_perk(31)
 class LargeCaliber(PassiveOneTimePerk):
-    def apply_once(self, actor): ...
+    def apply_once(self, actor):
+        rule = actor.side_weapon.get_distance_rule(41)
+        actor.side_weapon.distance_rules.remove(rule)
+        actor.side_weapon.base_dices = [Dice(12)]
+        self.is_completed = True
 
 @dataclass
 @register_perk(32)
 class ExtendedStocks(PassiveOneTimePerk):
-    def apply_once(self, actor): ...
+    def apply_once(self, actor):
+        if isinstance(actor.side_weapon, FireArmWeaponInstance):
+            actor.side_weapon.mag_size += 2
+            actor.side_weapon.load_bullets(count=2)
+            self.is_completed = True
 
 @dataclass
-@register_perk(33)
-class LowSilhouette(PassiveOneTimePerk):
-    def apply_once(self, actor): ...
+@register_perk(33) # TODO: Future feature
+class LowSilhouette(PassiveOneTimePerk ):
+    def apply_once(self, actor):
+        actor.half_cover_is_full_cover = True
+        self.is_completed = True
 
 @dataclass
 @register_perk(34)
@@ -460,6 +476,9 @@ class OnEdge(PassiveTriggeredPerk):
     def apply_effect(self, actor: "CharacterInstance", ctx: Optional[EventCtx]) -> None:
         ...
 
+    def on_gain(self, actor: "CharacterInstance") -> None:
+        actor.side_weapon.base_acc += 20
+
 @dataclass
 @register_perk(65)
 class CircularReload(PassiveTriggeredPerk):
@@ -524,13 +543,44 @@ class ReflectiveReload(PassiveTriggeredPerk):
 
 @dataclass
 @register_perk(71)
-class FaceToFace(PassiveTriggeredPerk):
-    is_activated: bool = False
-    def conditions_met(self, actor: "CharacterInstance", ctx: Optional[EventCtx]) -> bool:
-        return True
+class FaceToFace(PassiveOneTimePerk):
+    def apply_once(self, actor: "CharacterInstance") -> None:
+        distance_rules = actor.main_weapon.distance_rules
+        rule_0 = None
+        rule_5 = None
+        rule_10 = None
+        current_0 = actor.main_weapon.get_distance_rule(1)
+        current_5 = actor.main_weapon.get_distance_rule(5)
+        current_10 = actor.main_weapon.get_distance_rule(10)
 
-    def apply_effect(self, actor: "CharacterInstance", ctx: Optional[EventCtx]) -> None:
-        ...
+        for dr in distance_rules:
+            if dr.min_distance == 0:
+                rule_0 = dr
+            if dr.min_distance == 5:
+                rule_5 = dr
+            if dr.min_distance == 10:
+                rule_10 = dr
+
+        distances = [0, 5, 10]
+        cr_buffs = [90, 60, 30]
+        current_res = [copy(current_0), copy(current_5), copy(current_10)]
+        rules = [rule_0, rule_5, rule_10]
+        for i in range(3):
+            if rules[i]:
+                rules[i].cr_buff += cr_buffs[i]
+            else:
+                distance_rules.append(
+                    DistanceModifier(
+                        distances[i],
+                        accuracy_buff=current_res[i].accuracy_buff,
+                        cr_buff=current_res[i].cr_buff + cr_buffs[i],
+                        damage_mult=current_res[i].damage_mult,
+                    )
+                )
+
+        self.is_completed = True
+
+
 
 @dataclass
 @register_perk(72)
@@ -552,6 +602,9 @@ class KingOfBattle(PassiveTriggeredPerk):
 
     def apply_effect(self, actor: "CharacterInstance", ctx: Optional[EventCtx]) -> None:
         ...
+
+    def apply_once(self, actor: "CharacterInstance") -> None:
+        actor.crit_buff += 60
 
 @dataclass
 @register_perk(74)
@@ -704,7 +757,8 @@ class RapidDeployment(ActivePerk):
 
 @dataclass
 @register_perk(89) # TODO: Weapon
-class WhatToDetonate(ActivePerk):
+class WhatToDetonate(BulletSpendingPerk):
+    ammo_using: int = 1
     cooldown: int = 1
 
     def on_activate(self, actor, *args, **kwargs) -> bool:
@@ -833,8 +887,9 @@ class Hover(ActivePerk):
 
 @dataclass
 @register_perk(104) # TODO: Consume, Ground state
-class SkyShot(ActivePerk):
+class SkyShot(BulletSpendingPerk):
     cooldown: int = 1
+    ammo_using: int = 1
 
     def on_activate(self, actor, *args, **kwargs):
         return True
@@ -904,8 +959,9 @@ class MarkTarget(ActivePerk):
 
 @dataclass
 @register_perk(112)
-class LegShot(ActivePerk):
+class LegShot(BulletSpendingPerk):
     cooldown: int = 1
+    ammo_using: int = 1
 
     def on_activate(self, actor, *args, **kwargs):
         return True
@@ -940,8 +996,9 @@ class MoveOut(ActivePerk):
 
 @dataclass
 @register_perk(116) # TODO: Weapon
-class PistolBarrage(ActivePerk):
+class PistolBarrage(BulletSpendingPerk):
     cooldown: int = 3
+    ammo_using: int = 3
 
     def on_activate(self, actor, *args, **kwargs):
         return True
@@ -968,9 +1025,12 @@ class ConcentratedFire(ActivePerk):
 @dataclass
 @register_perk(119)
 class RunAndGun(ActivePerk):
+    do_reload: bool = False
     cooldown: int = 2
 
     def on_activate(self, actor, *args, **kwargs):
+        if self.do_reload:
+            actor.main_weapon.reload()
         return True
 
 
@@ -978,7 +1038,10 @@ class RunAndGun(ActivePerk):
 @register_perk(120)
 class ReloadOnTheRun(PassiveOneTimePerk):
     def apply_once(self, actor: "CharacterInstance") -> None:
-        ...
+        perk = actor.get_perk_by_id(119)
+        perk.do_reload = True
+        self.is_completed = True
+
 
 
 @dataclass
@@ -1000,18 +1063,27 @@ class Dash(ActivePerk):
 
 
 @dataclass
-@register_perk(123)
+@register_perk(123) # TODO: Activate somewhen
 class Fortify(ActivePerk):
     cooldown: int = 1
 
+    def could_be_activated(self, actor: "CharacterInstance", *args, **kwargs):
+        return super().could_be_activated(actor, *args, **kwargs)
+        if actor.ablative != 0:
+            return False
+        return super().could_be_activated(actor, *args, **kwargs)
+
     def on_activate(self, actor, *args, **kwargs):
+        return True
+        actor.ablative += 10
         return True
 
 
 @dataclass
 @register_perk(124) # TODO: Weapon
-class StreetSweeper(ActivePerk):
+class StreetSweeper(BulletSpendingPerk):
     cooldown: int = 3
+    ammo_using: int = 3
 
     def on_activate(self, actor, *args, **kwargs):
         return True
@@ -1019,7 +1091,8 @@ class StreetSweeper(ActivePerk):
 
 @dataclass
 @register_perk(125) # TODO: Weapon 1
-class FanShot(ActivePerk):
+class FanShot(BulletSpendingPerk):
+    ammo_using: int = 1
     cooldown: int = 1
 
     def on_activate(self, actor, *args, **kwargs):
@@ -1041,13 +1114,15 @@ class QuickHands(ActivePerk):
     cooldown: int = 2
 
     def on_activate(self, actor, *args, **kwargs):
+        actor.main_weapon.reload()
         return True
 
 
 @dataclass
 @register_perk(128) # TODO: Weapon
-class Bullseye(ActivePerk):
+class Bullseye(BulletSpendingPerk):
     cooldown: int = 3
+    ammo_using: int = 1
 
     def on_activate(self, actor, *args, **kwargs):
         return True
@@ -1059,6 +1134,7 @@ class BulletStorm(ActivePerk):
     cooldown: int = 5
 
     def on_activate(self, actor, *args, **kwargs):
+        actor.side_weapon.current_ammo = 0
         return True
 
 @dataclass
@@ -1081,8 +1157,9 @@ class SituationalAwareness(ActivePerk):
 
 @dataclass
 @register_perk(132)
-class PreciseShot(ActivePerk):
+class PreciseShot(BulletSpendingPerk):
     cooldown: int = 3
+    ammo_using: int = 1
 
     def on_activate(self, actor, *args, **kwargs):
         return True
@@ -1099,8 +1176,9 @@ class ExplosiveShot(ActivePerk):
 
 @dataclass
 @register_perk(134) # TODO: Weapon
-class EMPBlast(ActivePerk):
+class EMPBlast(BulletSpendingPerk):
     cooldown: int = 3
+    ammo_using: int = 1
 
     def on_activate(self, actor, *args, **kwargs):
         return True
@@ -1127,8 +1205,9 @@ class RicochetShot(ActivePerk):
 
 @dataclass
 @register_perk(137) # TODO: Weapon
-class DoubleTap(ActivePerk):
+class DoubleTap(BulletSpendingPerk):
     cooldown: int = 4
+    ammo_using: int = 2
 
     def on_activate(self, actor, *args, **kwargs):
         return True
@@ -1389,8 +1468,12 @@ class Absolute(PassiveTriggeredPerk):
     def apply_effect(self, actor: "CharacterInstance", ctx: Optional[EventCtx]) -> None:
         pass
 
-    def on_gain(self, actor: "CharacterInstance") -> bool:
-        return True
+    def apply_once(self, actor: "CharacterInstance") -> None:
+        actor.mobility += 10
+        if isinstance(actor.side_weapon, FireArmWeaponInstance):
+            actor.side_weapon.mag_size += 2
+            actor.side_weapon.load_bullets(count=2)
+
 
 @dataclass
 @register_perk(170)
@@ -1813,6 +1896,9 @@ class ArmorPiercer(PassiveTriggeredPerk):
     def apply_effect(self, actor: "CharacterInstance", ctx: Optional[EventCtx]) -> None:
         ...
 
+    def apply_once(self, actor: "CharacterInstance") -> None:
+        actor.main_weapon.armor_ignorance += 5
+
 @dataclass
 @register_perk(218)
 class LongRangeOverwatch(PassiveTriggeredPerk):
@@ -2096,9 +2182,6 @@ class SmokeScreen(AdditionalPerk, PassiveOneTimePerk):
 @register_perk(250)
 class BattleHardened(AdditionalPerk, CombatHardened):
     points_cost: int = 25
-
-
-
 
 
 @dataclass

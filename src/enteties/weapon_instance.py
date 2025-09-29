@@ -1,4 +1,5 @@
 from abc import ABC
+from copy import deepcopy
 from dataclasses import dataclass, field
 from typing import List, Optional, Union
 
@@ -16,10 +17,13 @@ class WeaponInstance(ABC):
     cr_dices: List[Dice] = field(init=False)
     movement_effects: int = field(init=False)
     armor_destroying: int = field(init=False)
+    armor_ignorance: int = field(init=False)
     is_move_attack_allowed: bool = field(init=False)
     base_atk: int = field(init=False)
     base_cr: int = field(init=False)
     bonus_dices: Optional[List[Dice]] = field(default=None)
+
+    distance_rules: Optional[List[DistanceModifier]] = field(default=None)
 
     def __post_init__(self):
         self.name = self.weapon.name
@@ -27,11 +31,27 @@ class WeaponInstance(ABC):
         self.cr_dices = self.weapon.cr_dices
         self.movement_effects = self.weapon.movement_effects
         self.armor_destroying = self.weapon.armor_destroying
+        self.armor_ignorance = self.weapon.armor_ignorance
         self.is_move_attack_allowed = self.weapon.is_move_attack_allowed
         self.base_atk = self.weapon.base_atk
         self.base_acc = self.weapon.base_acc
         self.base_cr = self.weapon.base_cr
         self.bonus_dices = self.weapon.bonus_dices
+        self.distance_rules = deepcopy(self.weapon.distance_rules)
+
+    def get_distance_rule(self, distance):
+        if not self.distance_rules:
+            return None
+
+
+        for rule in sorted(
+            self.distance_rules,
+            key=lambda r: r.min_distance,
+            reverse=True
+        ):
+            if distance > rule.min_distance:
+                return rule
+        raise Exception('Invalid distance. Probably wrong weapon setting')
 
     def additional_info(self) -> List[str]:
         return []
@@ -60,10 +80,12 @@ class ThrowingWeaponInstance(WeaponInstance):
 @dataclass
 class FireArmWeaponInstance(WeaponInstance):
     weapon: FirearmWeapon
+    mag_size: int = field(init=False)
     current_ammo: int = field(init=False)
 
     def __post_init__(self) -> None:
-        self.current_ammo = self.weapon.mag_size
+        self.mag_size = self.weapon.mag_size
+        self.current_ammo = self.mag_size
         super().__post_init__()
 
     def shoot(self, bullets=1) -> bool:
@@ -73,10 +95,10 @@ class FireArmWeaponInstance(WeaponInstance):
         return False
 
     def reload(self):
-        self.current_ammo = self.weapon.mag_size
+        self.current_ammo = self.mag_size
 
     def load_bullets(self, count=1) -> bool:
-        if self.current_ammo + count <= self.weapon.mag_size:
+        if self.current_ammo + count <= self.mag_size:
             self.current_ammo += count
             return True
         return False

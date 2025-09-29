@@ -29,12 +29,6 @@ class Weapon(ABC):
             reverse=True
         ) if self.distance_rules else None
 
-    def get_distance_rule(self, distance):
-        for rule in self.distance_rules:
-            if distance > rule.min_distance:
-                return rule
-        raise Exception('Invalid distance. Probably wrong weapon setting')
-
 
 @dataclass
 class FirearmWeapon(Weapon):
@@ -56,4 +50,5 @@ class ThrowingWeapon(Weapon):
 
 @dataclass
 class MeleeWeapon(Weapon):
+    base_acc: int = 100
     distance_rules: Optional[List[DistanceModifier]] = None

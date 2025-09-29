@@ -20,6 +20,7 @@ class Character(ABC):
     view: int = 30
     dodge: int = 0
     accuracy: int = 0
+    crit_buff: int = 0
     explosion_resistance: int = 0
     is_organic: bool = True
     throw_distance: int = 40

@@ -338,6 +338,7 @@ class PerkScreen:
             weapons.append(self.character.side_weapon)
         shoot_helper.custom_weapons = weapons
         shoot_helper.selected_weapon_index = 0  # сбросить выбор
+        shoot_helper.selected_character = self.character
         runtime.current_screen = shoot_helper  # переключение экрана
 
     def _open_inventory_modal(self):

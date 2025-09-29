@@ -1,6 +1,7 @@
 from dataclasses import dataclass, field
 from typing import Optional
 
+from src.enteties.character_instance import CharacterInstance
 from src.enteties.weapon_instance import WeaponInstance
 from src.rules.characters.character import Character
 from src.rules.weapons.weapon import Weapon
@@ -10,7 +11,7 @@ from src.rules.weapons.cover import Position, Cover, Interference
 class FutureCalculation:
     """Should be used in future versions"""
 
-    def __init__(self, attack: Character = None, weapon: Weapon = None, defense: Character = None, distance: int = 0):
+    def __init__(self, attack: Character = None, weapon: WeaponInstance = None, defense: Character = None, distance: int = 0):
         self.attack = attack
         self.weapon = weapon
         self.defense = defense
@@ -31,6 +32,7 @@ class FutureCalculation:
 
 @dataclass
 class LegacyCalculation:
+    character: Optional["CharacterInstance"] = None
     weapon: Optional["WeaponInstance"] = None
     distance: int = 0
     relative_position: Position = Position.EQUAL
@@ -49,6 +51,10 @@ class LegacyCalculation:
     def __post_init__(self) -> None:
         self.base_acc = self.weapon.base_acc
         self.base_cr = self.weapon.base_cr
+
+        if self.character:
+            self.base_acc += self.character.accuracy
+
         if self.relative_position == Position.LOWER:
             self.base_acc -= 15
             self.base_cr -= 5
@@ -58,7 +64,7 @@ class LegacyCalculation:
             self.ignore_small_interference = True
 
         if self.weapon.weapon.distance_rules:
-            rule = self.weapon.weapon.get_distance_rule(self.distance)
+            rule = self.weapon.get_distance_rule(self.distance)
             self.distance_damage_mult, self.distance_acc, self.distance_cr = rule.calculate_penalties(self.distance)
         else:
             self.distance_damage_mult, self.distance_acc, self.distance_cr = 1.0, 0, 0
